@@ -1,10 +1,10 @@
 \begin{tikzpicture}[
     every edge/.style={draw,auto}
 ]
-	\node[state, initial] (A) at (0,0) {$s$};
+	\node[state, initial] at (0,0) (A)  {$0$};
 	\node[state] at (2,2) (B)  {$1$};
 	\node[state] at (2,-2) (C) {$2$};
-	\node[state,accepting] at (4,0) (D)  {$c$};
+	\node[state,accepting] at (4,0) (D)  {$3$};
 	\node[state] at (2,0) (BOT) {$\bot$};
     \path[->]
 	(A) edge node[] {$a$} (B)

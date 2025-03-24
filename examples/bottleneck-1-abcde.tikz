@@ -1,7 +1,7 @@
 \begin{tikzpicture}[
     every edge/.style={draw,auto}
 ]
-	\node[state, initial] (A) at (0,0) {$s$};
+	\node[state, initial] at (0,0) (A)  {$s$};
 	\node[state] at (2,2) (B)  {$l$};
 	\node[state] at (2,-2) (C) {$r$};
 	\node[state] at (4,0) (D)  {$c$};
