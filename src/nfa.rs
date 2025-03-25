@@ -312,6 +312,59 @@ impl Nfa {
                 .collect::<Vec<_>>(),
         )
     }
+
+    pub(crate) fn from_hanoi(content: &str) -> Nfa {
+        let mut states = 0;
+        let mut start_states = Vec::<usize>::new();
+        let mut transitions = HashMap::new();
+
+        let re_states = Regex::new(r"States:\s+(\d+)").unwrap();
+        let re_start = Regex::new(r"Start:\s+(\d+)").unwrap();
+        let re_state = Regex::new(r"State:\s+(\d+)").unwrap();
+        let re_transition = Regex::new(r"\[(.*?)\]\s+(\d+)(?:\s+\{(.*?)\})?").unwrap();
+
+        for line in content.lines() {
+            if let Some(cap) = re_states.captures(line) {
+                states = cap[1].parse().unwrap();
+            } else if let Some(cap) = re_start.captures(line) {
+                start_states.push(cap[1].parse().unwrap());
+            } else if let Some(cap) = re_state.captures(line) {
+                let state = cap[1].parse::<usize>().unwrap();
+                transitions.entry(state).or_insert_with(Vec::new);
+            } else if let Some(cap) = re_transition.captures(line) {
+                let label = cap[1].to_string();
+                let target = cap[2].parse::<usize>().unwrap();
+                let acc_set = cap
+                    .get(3)
+                    .map(|m| {
+                        m.as_str()
+                            .split_whitespace()
+                            .filter_map(|x| x.parse::<usize>().ok())
+                            .collect()
+                    })
+                    .unwrap_or_else(HashSet::new);
+
+                let state = *transitions.keys().last().unwrap();
+                transitions
+                    .entry(state)
+                    .or_insert_with(Vec::new)
+                    .push((label, target, acc_set));
+            }
+        }
+        let mut nfa = Nfa::from_size(states);
+        for state in start_states {
+            nfa.add_initial_by_index(state);
+        }
+        for transition in transitions {
+            for (label, target, acc_set) in transition.1 {
+                for acc in acc_set {
+                    //nfa.add_transition_by_index(transition.0, target, label.clone());
+                    nfa.add_final_by_index(acc);
+                }
+            }
+        }
+        nfa
+    }
 }
 
 impl fmt::Display for Nfa {

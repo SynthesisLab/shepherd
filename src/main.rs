@@ -20,7 +20,12 @@ struct Args {
     #[arg(short, long, help = "The path to the input file")]
     filename: String,
 
-    #[arg(short, long, default_value = "tikz", help = "The input format")]
+    #[arg(
+        short,
+        long,
+        default_value = "tikz",
+        help = "The input format in {tikz,hoa}"
+    )]
     input_type: String,
 
     //adds an explanation to the help message
@@ -46,9 +51,10 @@ fn main() {
     let nfa = match read_file(&tikz_path) {
         Ok(content) => match args.input_type.as_str() {
             "tikz" => nfa::Nfa::from_tikz(&content),
+            "hoa" => nfa::Nfa::from_hanoi(&content),
             _ => {
                 eprintln!("Invalid format: {}", args.input_type);
-                eprintln!("Known formats: [tikz]");
+                eprintln!("Known formats: [tikz, hoa]");
                 process::exit(1);
             }
         },
