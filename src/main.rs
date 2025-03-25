@@ -46,6 +46,7 @@ fn main() {
     let nfa = match read_file(&tikz_path) {
         Ok(content) => match args.input_type.as_str() {
             "tikz" => nfa::Nfa::from_tikz(&content),
+            "dot" =>  nfa::Nfa::from_dot(&content),
             _ => {
                 eprintln!("Invalid format: {}", args.input_type);
                 eprintln!("Known formats: [tikz]");
