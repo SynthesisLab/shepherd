@@ -3,6 +3,7 @@ authors @GBathie + @Numero7
  */
 
 use crate::graph::Graph;
+use dot_parser::*;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -44,6 +45,86 @@ impl Nfa {
             accepting: HashSet::new(),
             transitions: vec![],
         }
+    }
+
+    pub fn from_dot(input: &str) -> Self {
+        // intermediate boxes to hold values
+        let mut states: Vec<String> = Vec::new(); //preserves appearance order in file
+        let mut names: HashMap<String, String> = HashMap::new();
+        let mut initials: HashSet<String> = HashSet::new();
+        let mut finals: HashSet<String> = HashSet::new();
+        let mut transitions: Vec<(String, String, String)> = Vec::new();
+
+        // get a graph from the DOT string
+        let graph = canonical::Graph::from(ast::Graph::try_from(input).unwrap());
+
+
+        // extract nodes with labels:
+        // - ignore state with label "init"
+        // - interpret nodes with attribute "shape:doublecircle" as accepting states
+        for (id,node) in graph.nodes.set {
+            //println!("{:#?}", node);  // help me debug
+            
+            // skip over artificial "init" state
+            if id.eq("init") { continue; }
+
+            println!("state {}", id);
+            states.push(id.clone());  // keep node.id as state id
+
+            for (k,v) in node.attr.elems {
+                //println!("  {k}:{v}");
+                if k.eq("label") {
+                    // remove double quotes around node labels
+                    let l = v.trim_matches(|c| c == '"');
+                    println!("  Label: {}", l);
+                    names.insert(node.id.clone(), l.to_string());
+                }
+                if k.eq("shape") && v.eq("doublecircle"){
+                    //println!("state {} is accepting", node.id);
+                    finals.insert(node.id.clone());
+                }
+            }
+        }
+
+        // interpret edges with labels
+        // also define set of initial states as those where "init" has an edge into.
+        for edge in graph.edges.set {
+            //println!("{:#?}", edge);
+            
+            // if an edge from init to X exists then X interpreted as initial state.
+            if edge.from.eq("init"){
+                //println!("{:#?}", edge);
+                initials.insert(edge.to.clone());
+            }
+            for (k,v) in edge.attr.elems {
+                //println!("  {k}:{v}");
+                if k.eq("label") {
+                    // remove double quotes around labels
+                    let l = v.trim_matches(|c| c == '"');
+                    transitions.push((edge.from.clone(), l.to_string(), edge.to.clone()));
+                    //println!("{} --{}--> {} ", edge.from, v, edge.to);
+                }
+            }
+        }
+        
+        // Create NFA struct and filling it with data from auxiliary boxes
+        let mut nfa = Nfa {
+            states,
+            initial: HashSet::new(),
+            accepting: HashSet::new(),
+            transitions: vec![],
+        };
+        for state in initials.iter() {
+            println!("IN {:#?}", state);
+            nfa.add_initial(&state);
+        }
+        for state in finals {
+            nfa.add_final(&state);
+        }
+        for (from, label, to) in transitions {
+            nfa.add_transition(&from, &to, &label);
+        }
+        nfa
     }
 
     pub fn from_tikz(input: &str) -> Self {
