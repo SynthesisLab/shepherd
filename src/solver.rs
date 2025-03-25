@@ -6,24 +6,24 @@ use crate::nfa;
 use crate::nfa::Nfa;
 use crate::semigroup;
 use crate::sheep::Sheep;
+use crate::solution::Solution;
 use crate::strategy::Strategy;
 use log::{debug, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt;
-
-pub struct Solution {
-    pub nfa: Nfa,
-    pub result: bool,
-    pub maximal_winning_strategy: Strategy,
-}
 
 pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
     let complete_nfa;
+    let mut nb_states_added = 0;
+    let mut nb_transitions_added = 0;
     let nfa = match original_nfa.is_complete() {
         true => original_nfa,
         false => {
+            let nb_states_before = original_nfa.nb_states();
+            let nb_transitions_before = original_nfa.nb_transitions();
             complete_nfa = nfa::Nfa::turn_into_complete_nfa(original_nfa).unwrap();
+            nb_states_added = complete_nfa.nb_states() - nb_states_before;
+            nb_transitions_added = complete_nfa.nb_transitions() - nb_transitions_before;
             warn!(
                 "The NFA was not complete. It was turned into the following complete NFA {}.",
                 complete_nfa
@@ -33,9 +33,12 @@ pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
     };
 
     let dim = nfa.nb_states();
-    let source = get_omega_sheep(dim, nfa.initial_states());
+    let source = get_omega_sheep(
+        dim,
+        &nfa.initial_states().iter().cloned().collect::<Vec<_>>(),
+    );
     let final_states = nfa.final_states();
-    let final_ideal = get_omega_sheep(dim, final_states.iter().cloned().collect());
+    let final_ideal = get_omega_sheep(dim, &final_states);
 
     let edges = get_edges(nfa);
     let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
@@ -60,15 +63,17 @@ pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
     }
     Solution {
         nfa: nfa.clone(),
+        nb_states_added,
+        nb_transitions_added,
         result,
         maximal_winning_strategy: strategy,
     }
 }
 
-fn get_omega_sheep(dim: usize, states: HashSet<usize>) -> Sheep {
+fn get_omega_sheep(dim: usize, states: &[usize]) -> Sheep {
     let mut sheep = Sheep::new(dim, C0);
     for state in states {
-        sheep.set(state, OMEGA);
+        sheep.set(*state, OMEGA);
     }
     sheep
 }
@@ -104,22 +109,6 @@ fn flows_to_string(flows: &HashSet<flow::Flow>) -> String {
     let mut vec: Vec<String> = flows.iter().map(|x| x.to_string()).collect();
     vec.sort();
     vec.join("\r\n")
-}
-
-impl fmt::Display for Solution {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "***************")?;
-        let answer = if self.result {
-            "controllable"
-        } else {
-            "uncontrollable"
-        };
-        writeln!(f, "Answer: {}", answer)?;
-        writeln!(f, "\n\nMaximal winning random walk:\n")?;
-        writeln!(f, "States:\n{}", self.nfa.states_str())?;
-        writeln!(f, "\n{}\n", self.maximal_winning_strategy)?;
-        writeln!(f, "***************")
-    }
 }
 
 #[cfg(test)]
@@ -226,9 +215,55 @@ mod tests {
         assert_eq!(solution.result, false);
     }
 
+    pub(crate) fn get_nfa(name: &str) -> Nfa {
+        match name {
+            "((a#b){a,b})#" => {
+                let mut nfa = Nfa::from_states(&["0", "1", "2", "3", "4", "5"]);
+                nfa.add_initial("0");
+                nfa.add_final("4");
+                nfa.add_transition("0", "0", "a");
+                nfa.add_transition("0", "1", "a");
+                nfa.add_transition("1", "0", "a");
+                nfa.add_transition("1", "1", "a");
+                nfa.add_transition("4", "4", "a");
+                nfa.add_transition("5", "5", "a");
+
+                nfa.add_transition("0", "0", "b");
+                nfa.add_transition("4", "4", "b");
+                nfa.add_transition("5", "5", "b");
+
+                nfa.add_transition("1", "2", "b");
+                nfa.add_transition("1", "3", "b");
+
+                nfa.add_transition("2", "4", "a");
+                nfa.add_transition("2", "5", "b");
+                nfa.add_transition("3", "4", "b");
+                nfa.add_transition("3", "5", "a");
+                nfa.add_transition("1", "0", "a");
+                nfa.add_transition("1", "1", "a");
+                nfa.add_transition("4", "4", "a");
+                nfa.add_transition("5", "5", "a");
+
+                nfa.add_transition("0", "0", "b");
+                nfa.add_transition("4", "4", "b");
+                nfa.add_transition("5", "5", "b");
+
+                nfa.add_transition("1", "2", "b");
+                nfa.add_transition("1", "3", "b");
+
+                nfa.add_transition("2", "4", "a");
+                nfa.add_transition("2", "5", "b");
+                nfa.add_transition("3", "4", "b");
+                nfa.add_transition("3", "5", "a");
+                nfa
+            }
+            _ => panic!("Unknown NFA"),
+        }
+    }
+
     #[test]
     fn test_solve_positive_two_letters() {
-        let nfa = Nfa::get_nfa("((a#b){a,b})#");
+        let nfa = get_nfa("((a#b){a,b})#");
 
         let solution = solve(&nfa);
         print!("{}", solution);

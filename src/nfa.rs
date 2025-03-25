@@ -26,6 +26,7 @@ pub struct Nfa {
 }
 
 impl Nfa {
+    #[allow(dead_code)]
     pub fn from_size(nb_states: usize) -> Self {
         Nfa {
             states: (0..nb_states).map(|index| index.to_string()).collect(),
@@ -143,11 +144,13 @@ impl Nfa {
         assert!(q < self.nb_states(), "State {} is not in the NFA", q)
     }
 
+    #[allow(dead_code)]
     pub fn add_initial_by_index(&mut self, q: State) {
         self.check_state(q);
         self.initial.insert(q);
     }
 
+    #[allow(dead_code)]
     pub fn add_final_by_index(&mut self, q: State) {
         self.check_state(q);
         self.accepting.insert(q);
@@ -165,8 +168,41 @@ impl Nfa {
         self.states.len()
     }
 
+    pub(crate) fn nb_transitions(&self) -> usize {
+        self.transitions.len()
+    }
+
     pub fn states_str(&self) -> String {
-        format!("| {} |", self.states.join(" , "))
+        format!("( {} )", self.states.join(" , "))
+    }
+
+    pub fn initial_states_str(&self) -> String {
+        self.initial
+            .iter()
+            .map(|&i| self.states[i].as_str())
+            .collect::<Vec<_>>()
+            .join(" , ")
+    }
+
+    pub fn accepting_states_str(&self) -> String {
+        self.accepting
+            .iter()
+            .map(|&i| self.states[i].as_str())
+            .collect::<Vec<_>>()
+            .join(" , ")
+    }
+
+    pub fn transitions_str(&self) -> String {
+        self.transitions
+            .iter()
+            .map(|t| {
+                format!(
+                    "\t{} --{}--> {}",
+                    self.states[t.from], t.label, self.states[t.to]
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     pub(crate) fn initial_states(&self) -> HashSet<State> {
@@ -266,36 +302,6 @@ impl Nfa {
             .expect("State not found")
     }
 
-    pub(crate) fn get_nfa(name: &str) -> Nfa {
-        match name {
-            "((a#b){a,b})#" => {
-                let mut nfa = Nfa::from_size(6);
-                nfa.add_initial_by_index(0);
-                nfa.add_final_by_index(4);
-                nfa.add_transition_by_index(0, 0, 'a');
-                nfa.add_transition_by_index(0, 1, 'a');
-                nfa.add_transition_by_index(1, 0, 'a');
-                nfa.add_transition_by_index(1, 1, 'a');
-                nfa.add_transition_by_index(4, 4, 'a');
-                nfa.add_transition_by_index(5, 5, 'a');
-
-                nfa.add_transition_by_index(0, 0, 'b');
-                nfa.add_transition_by_index(4, 4, 'b');
-                nfa.add_transition_by_index(5, 5, 'b');
-
-                nfa.add_transition_by_index(1, 2, 'b');
-                nfa.add_transition_by_index(1, 3, 'b');
-
-                nfa.add_transition_by_index(2, 4, 'a');
-                nfa.add_transition_by_index(2, 5, 'b');
-                nfa.add_transition_by_index(3, 4, 'b');
-                nfa.add_transition_by_index(3, 5, 'a');
-                nfa
-            }
-            _ => panic!("Unknown NFA"),
-        }
-    }
-
     pub(crate) fn get_support(&self, action: &str) -> crate::graph::Graph {
         Graph::new(
             &self
@@ -311,10 +317,10 @@ impl Nfa {
 impl fmt::Display for Nfa {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "NFA\n")?;
-        writeln!(f, "States: {:?}", self.states)?;
-        writeln!(f, "Initial: {:?}", self.initial)?;
-        writeln!(f, "Accepting: {:?}", self.accepting)?;
-        writeln!(f, "Transitions: {:?}", self.transitions)
+        writeln!(f, "States: {{ {} }}", self.states.join(" , "))?;
+        writeln!(f, "Initial: {{ {} }}", self.initial_states_str())?;
+        writeln!(f, "Accepting: {{ {} }}", self.accepting_states_str())?;
+        writeln!(f, "Transitions:\n{}", self.transitions_str())
     }
 }
 

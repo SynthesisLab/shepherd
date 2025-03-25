@@ -1,5 +1,4 @@
 use clap::Parser;
-use nfa::Nfa;
 use std::fs::File;
 use std::io::{self, Read};
 use std::process;
@@ -11,6 +10,7 @@ mod nfa;
 mod partitions;
 mod semigroup;
 mod sheep;
+mod solution;
 mod solver;
 mod strategy;
 
@@ -18,13 +18,13 @@ mod strategy;
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
-    filename: Option<String>,
+    filename: String,
 
     #[arg(short, long, default_value = "tikz")]
     input_type: String,
 
     #[arg(short, long, action)]
-    test: bool,
+    no_tex_output: bool,
 }
 
 fn main() {
@@ -34,37 +34,31 @@ fn main() {
 
     // Get the arguments
 
-    let nfa: Option<Nfa>;
-    match args.test {
-        true => nfa = Some(nfa::Nfa::get_nfa("((a#b){a,b})#")),
-        false => {
-            match args.filename {
-                Some(filename) => match read_file(&filename) {
-                    Ok(content) => match args.input_type.as_str() {
-                        "tikz" => {
-                            nfa = Some(nfa::Nfa::from_tikz(&content));
-                        }
-                        _ => {
-                            eprintln!("Invalid format: {}", args.input_type);
-                            eprintln!("Known formats: [tikz]");
-                            process::exit(1);
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Error reading file '{}': '{}'", filename, e);
-                        process::exit(1);
-                    }
-                },
-                None => {
-                    eprintln!("Provide filename");
-                    process::exit(1);
-                }
+    let filename = args.filename;
+
+    let nfa = match read_file(&filename) {
+        Ok(content) => match args.input_type.as_str() {
+            "tikz" => nfa::Nfa::from_tikz(&content),
+            _ => {
+                eprintln!("Invalid format: {}", args.input_type);
+                eprintln!("Known formats: [tikz]");
+                process::exit(1);
             }
-            assert!(nfa.is_some());
+        },
+        Err(e) => {
+            eprintln!("Error reading file '{}': '{}'", &filename, e);
+            process::exit(1);
         }
-    }
-    let solution = solver::solve(&nfa.unwrap());
+    };
+
+    let solution = solver::solve(&nfa);
+
     println!("{}", solution);
+
+    if !args.no_tex_output {
+        let output_path = format!("{}.solution.tex", filename);
+        solution.generate_latex(&output_path, Some(filename.as_str()));
+    }
 }
 
 /// Reads the content of the file

@@ -6,45 +6,58 @@
 %   auto,
 % }}
 
+
 \begin{document}
 
-\section{Example 1: $(a^\sharp\{a,b\})^\sharp$} 
 %
-File {\tt example1.tikz}
+\section*{Automaton}
 
+Input nfa from file {\tt example1.tikz}
+\begin{center}
 \input{../examples/example1.tikz} 
+\end{center}
+
+Complete automaton:
+\begin{verbatim}
+States: { 0 , 1 , 2 , 3 , sink }
+Initial: { 0 }
+Accepting: { 3 }
+Transitions:
+        0 --a--> 1
+        0 --a--> 2
+        1 --a--> 3
+        2 --b--> 3
+        2 --a--> sink
+        3 --a--> sink
+        sink --a--> sink
+        0 --b--> sink
+        1 --b--> sink
+        3 --b--> sink
+        sink --b--> sink
+\end{verbatim}
+
+\newpage
+
+\section*{Strategy}
+
+The answer to the population control problem is:
+\begin{verbatim}
+					negative.
+\end{verbatim}
 
 
+\noindent Maximal winning random walk:
+\begin{verbatim}
+States:
+		{ 0 , 1 , 2 , 3 , sink }
 
-\section{Example 2: capacity-1 bottlenecks}
+Play action 'a' in the downward-closure of
+		( 1 , _ , _ , _ , _ )
+		( _ , \omega , _ , _ , _ )
 
-\subsection{The most basic version}
 
-File {\tt bottleneck-1-ab.tikz}
+Play action 'b' in the downward-closure of
+		( _ , _ , \omega , _ , _ )
+\end{verbatim}
 
-\input{../examples/bottleneck-1-ab.tikz} 
-
-\subsection{The same basic version but complete}
-
-File {\tt bottleneck-1-ab-complete.tikz}
-
-\input{../examples/bottleneck-1-ab-complete.tikz} 
-
-\subsection{The same basic version, generated in finsm.io}
-
-File {\tt bottleneck-1-ab-finsm.tikz}
-
-\input{../examples/bottleneck-1-ab-finsm.tikz} 
-
-\subsection{The version as appears in the paper, with alphabet $\{a,b,c,d,e\}$.}
-
-File {\tt bottleneck-1-abcde.tikz}
-
-\input{../examples/bottleneck-1-abcde.tikz} 
-
-\subsection{The paper version but complete.}
-
-File {\tt bottleneck-1-abcde-complete.tikz}
-
-\input{../examples/bottleneck-1-abcde-complete.tikz} 
 \end{document}

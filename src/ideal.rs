@@ -298,7 +298,7 @@ impl fmt::Display for Ideal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut vec: Vec<String> = self.0.iter().map(|x| x.to_string()).collect();
         vec.sort();
-        write!(f, "{{\n\n{}\n\n}}\n", vec.join(" ,\n"))
+        writeln!(f, "\t{}", vec.join("\n\t"))
     }
 }
 

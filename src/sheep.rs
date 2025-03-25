@@ -82,7 +82,7 @@ impl fmt::Display for Sheep {
             .map(|&x| x.to_string())
             .collect::<Vec<_>>()
             .join(" , ");
-        write!(f, "| {} |", content)
+        write!(f, "( {} )", content)
     }
 }
 
