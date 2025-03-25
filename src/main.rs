@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::fs::File;
+use std::fs::{write, File};
 use std::io::{self, Read};
 use std::process;
 mod coef;
@@ -25,6 +25,12 @@ struct Args {
 
     #[arg(short, long, action)]
     no_tex_output: bool,
+
+    #[arg(long, action)]
+    no_pdf_output: bool,
+
+    #[arg(long, default_value = "pdflatex")]
+    latex_processor: String,
 }
 
 fn main() {
@@ -34,9 +40,9 @@ fn main() {
 
     // Get the arguments
 
-    let filename = args.filename;
+    let tikz_path = args.filename;
 
-    let nfa = match read_file(&filename) {
+    let nfa = match read_file(&tikz_path) {
         Ok(content) => match args.input_type.as_str() {
             "tikz" => nfa::Nfa::from_tikz(&content),
             _ => {
@@ -46,7 +52,7 @@ fn main() {
             }
         },
         Err(e) => {
-            eprintln!("Error reading file '{}': '{}'", &filename, e);
+            eprintln!("Error reading file '{}': '{}'", &tikz_path, e);
             process::exit(1);
         }
     };
@@ -56,8 +62,33 @@ fn main() {
     println!("{}", solution);
 
     if !args.no_tex_output {
-        let output_path = format!("{}.solution.tex", filename);
-        solution.generate_latex(&output_path, Some(filename.as_str()));
+        //remove trailing path from filename
+        let filename = tikz_path.split('/').last().unwrap();
+        let output_path_tex = format!("{}.solution.tex", filename);
+        let output_path_pdf = format!("{}.solution.pdf", filename);
+        solution.generate_latex(&output_path_tex, Some(&tikz_path));
+        println!("Solution written to tex file './{}'", output_path_tex);
+        if !args.no_pdf_output {
+            print!("\nRunning pdflatex...");
+            //run pdflatex on the generated file and redirect output to a log file
+            let output = process::Command::new(&args.latex_processor)
+                .arg("-interaction=nonstopmode")
+                .arg(&output_path_tex)
+                .output()
+                .expect("Failed to execute pdflatex");
+            println!("{}", String::from_utf8_lossy(&output.stderr));
+            //check whether file output_path_pdf exists
+            if !std::path::Path::new(&output_path_pdf).exists() {
+                write(&"pdflatex_stdout.log", &output.stdout).expect("Failed to write stdout log");
+                write(&"pdflatex_stderr.log", &output.stderr).expect("Failed to write stderr log");
+                eprintln!(
+                "error occurred. Check pdflatex_stdout.log and pdflatex_stderr.log for details."
+            );
+                process::exit(1);
+            } else {
+                println!("Solution written to pdf file './{}'", output_path_pdf);
+            }
+        }
     }
 }
 
