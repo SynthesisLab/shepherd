@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage{tikz}
+\usepackage[utf8]{inputenc}
+\usetikzlibrary{automata,positioning,arrows}
+
+% \tikzset{every edge/.append style={
+%   auto,
+% }}
+
+
+\begin{document}
+
+%
+\section*{Automaton}
+
+{% if is_tikz_input %}
+Input nfa from file {\tt {{ tikz_input }}}
+\begin{center}
+\input{ {{ tikz_input }} }
+\end{center}
+{% endif %}
+
+Complete automaton:
+\begin{verbatim}
+States: {{states}}
+Initial: {{initial}}
+Accepting: {{accepting}}
+Transitions:
+{{transitions}}
+\end{verbatim}
+
+\newpage
+
+\section*{Strategy}
+
+The answer to the population control problem is:
+\begin{verbatim}
+			{{answer}}.
+\end{verbatim}
+
+
+\noindent Maximal winning random walk:
+\begin{verbatim}
+States:
+	{{states}}
+
+{{strategy}}
+\end{verbatim}
+
+\end{document}

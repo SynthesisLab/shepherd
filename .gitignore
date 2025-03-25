@@ -4,3 +4,5 @@
 *.gz
 *.aux
 *.log
+./*.pdf
+./*.tex

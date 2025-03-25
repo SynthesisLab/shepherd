@@ -32,4 +32,7 @@ The file ```examples.pdf```at the root give details about examples.
 - Create an automaton using https://finsm.io
 - Copy paste the export (in Tikz format) in some local file and give it as input to shepherd, using the `-f` option.
 
+## Get the solution in tex and pdf format
 
+By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
+That can be changed with the options (check `--help` for more details).
