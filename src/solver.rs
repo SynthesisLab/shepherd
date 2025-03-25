@@ -92,8 +92,8 @@ mod tests {
         let mut nfa = Nfa::from_size(2);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 1, 'a');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 1, 'a');
         let strategy = Strategy::get_maximal_strategy(2, &["a"]);
         let edges = nfa.get_edges();
         let action_flows = compute_action_flows(&strategy, &edges);
@@ -114,11 +114,11 @@ mod tests {
         let mut nfa = Nfa::from_size(2);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
-        nfa.add_transition_by_index(0, 0, 'b');
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 0, 'b');
-        nfa.add_transition_by_index(1, 1, 'a');
-        nfa.add_transition_by_index(1, 1, 'b');
+        nfa.add_transition_by_index1(0, 0, 'b');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 0, 'b');
+        nfa.add_transition_by_index1(1, 1, 'a');
+        nfa.add_transition_by_index1(1, 1, 'b');
         let strategy = Strategy::get_maximal_strategy(2, &["a", "b"]);
         let edges = nfa.get_edges();
         let computed = compute_action_flows(&strategy, &edges);
@@ -141,9 +141,9 @@ mod tests {
         let mut nfa = Nfa::from_size(2);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
-        nfa.add_transition_by_index(0, 0, 'a');
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 1, 'a');
+        nfa.add_transition_by_index1(0, 0, 'a');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 1, 'a');
         let solution = solve(&nfa);
         assert_eq!(solution.result, true);
         assert_eq!(
@@ -158,9 +158,9 @@ mod tests {
         let mut nfa = Nfa::from_size(nb_states);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(2);
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(0, 2, 'a');
-        nfa.add_transition_by_index(1, 2, 'a');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(0, 2, 'a');
+        nfa.add_transition_by_index1(1, 2, 'a');
         let solution = solve(&nfa);
         assert!(!solution.result);
     }
@@ -170,10 +170,10 @@ mod tests {
         let mut nfa = Nfa::from_size(3);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(2);
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 1, 'a');
-        nfa.add_transition_by_index(0, 2, 'a');
-        nfa.add_transition_by_index(2, 2, 'a');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 1, 'a');
+        nfa.add_transition_by_index1(0, 2, 'a');
+        nfa.add_transition_by_index1(2, 2, 'a');
         let solution = solve(&nfa);
         print!("{}", solution);
         assert_eq!(solution.result, false);
