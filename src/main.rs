@@ -46,7 +46,7 @@ fn main() {
     let nfa = match read_file(&tikz_path) {
         Ok(content) => match args.input_type.as_str() {
             "tikz" => nfa::Nfa::from_tikz(&content),
-            "dot" =>  nfa::Nfa::from_dot(&content),
+            "dot" => nfa::Nfa::from_dot(&content),
             _ => {
                 eprintln!("Invalid format: {}", args.input_type);
                 eprintln!("Known formats: [tikz]");
@@ -68,7 +68,11 @@ fn main() {
         let filename = tikz_path.split('/').last().unwrap();
         let output_path_tex = format!("{}.solution.tex", filename);
         let output_path_pdf = format!("{}.solution.pdf", filename);
-        solution.generate_latex(&output_path_tex, Some(&tikz_path));
+        let is_tikz = args.input_type == "tikz";
+        solution.generate_latex(
+            &output_path_tex,
+            if is_tikz { Some(&tikz_path) } else { None },
+        );
         println!("Solution written to tex file './{}'", output_path_tex);
         if !args.no_pdf_output {
             print!("\nRunning pdflatex...");
