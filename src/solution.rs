@@ -7,8 +7,6 @@ use tera::{Context, Tera};
 /// A solution to the population control problem.
 pub struct Solution {
     pub nfa: Nfa,
-    pub nb_states_added: usize,
-    pub nb_transitions_added: usize,
     pub result: bool,
     pub maximal_winning_strategy: Strategy,
 }
@@ -62,22 +60,6 @@ impl fmt::Display for Solution {
             "uncontrollable"
         };
         writeln!(f, "Answer: {}", answer)?;
-        let was_completed = self.nb_states_added > 0 || self.nb_transitions_added > 0;
-        if was_completed {
-            writeln!(
-                f,
-                "The NFA was not complete. It was turned into the following complete NFA."
-            )?;
-            writeln!(f, "Number of states added: {}", self.nb_states_added)?;
-            writeln!(
-                f,
-                "Number of transitions added
-            : {}",
-                self.nb_transitions_added
-            )?;
-        } else {
-            writeln!(f, "The NFA was complete.")?;
-        }
         writeln!(f, "\n\nAutomaton:\n{}\n\n", self.nfa)?;
         writeln!(f, "Maximal winning random walk:\n")?;
         writeln!(f, "States:\n\t{}", self.nfa.states_str())?;

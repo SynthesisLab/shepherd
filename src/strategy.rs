@@ -24,11 +24,6 @@ impl Strategy {
         )
     }
 
-    #[allow(dead_code)]
-    pub fn dim(&self) -> Option<usize> {
-        self.0.values().filter_map(|ideal| ideal.dim()).next()
-    }
-
     pub fn is_defined_on(&self, source: &Sheep) -> bool {
         self.0.values().any(|ideal| ideal.contains(source))
     }

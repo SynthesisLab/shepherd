@@ -40,11 +40,6 @@ impl Ideal {
         Ideal(w.iter().cloned().collect())
     }
 
-    //returns the dimension of the ideal
-    pub(crate) fn dim(&self) -> Option<usize> {
-        self.0.iter().next().map(|ideal| ideal.len())
-    }
-
     /// Create an ideal from a vector of vectors of coefficients.
     /// The method is used in the tests.
     #[allow(dead_code)]
@@ -189,10 +184,6 @@ impl Ideal {
 
         //print max_finite_coords and is_omega_possible
         debug!("preimage of {}\n by\n{}\n", self, edges);
-        debug!(
-            "\nmax_finite_coordsi {:?}\nis_omega_possible {:?}\n",
-            max_finite_coordsi, is_omega_possible
-        );
 
         let possible_coefs = (0..dim)
             .map(|i| {
@@ -210,13 +201,13 @@ impl Ideal {
                         .rev()
                         .collect::<Vec<_>>(),
                     (None, true) => vec![OMEGA],
-                    (None, false) => panic!("logically inconsistent case"),
+                    (None, false) => vec![], //no edge case
                 }
             })
             .collect::<Vec<_>>();
-        //debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        //debug!("is_omega_possible: {:?}\n", is_omega_possible);
-        //debug!("possible_coefs: {:?}\n", possible_coefs);
+        debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        debug!("is_omega_possible: {:?}\n", is_omega_possible);
+        debug!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
         for candidate in partitions::cartesian_product(&possible_coefs) {

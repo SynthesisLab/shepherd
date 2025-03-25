@@ -3,35 +3,15 @@ use crate::coef::OMEGA;
 use crate::flow;
 use crate::graph::Graph;
 use crate::nfa;
-use crate::nfa::Nfa;
 use crate::semigroup;
 use crate::sheep::Sheep;
 use crate::solution::Solution;
 use crate::strategy::Strategy;
-use log::{debug, warn};
+use log::debug;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
-    let complete_nfa;
-    let mut nb_states_added = 0;
-    let mut nb_transitions_added = 0;
-    let nfa = match original_nfa.is_complete() {
-        true => original_nfa,
-        false => {
-            let nb_states_before = original_nfa.nb_states();
-            let nb_transitions_before = original_nfa.nb_transitions();
-            complete_nfa = nfa::Nfa::turn_into_complete_nfa(original_nfa).unwrap();
-            nb_states_added = complete_nfa.nb_states() - nb_states_before;
-            nb_transitions_added = complete_nfa.nb_transitions() - nb_transitions_before;
-            warn!(
-                "The NFA was not complete. It was turned into the following complete NFA {}.",
-                complete_nfa
-            );
-            &complete_nfa
-        }
-    };
-
+pub fn solve(nfa: &nfa::Nfa) -> Solution {
     let dim = nfa.nb_states();
     let source = get_omega_sheep(
         dim,
@@ -40,7 +20,7 @@ pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
     let final_states = nfa.final_states();
     let final_ideal = get_omega_sheep(dim, &final_states);
 
-    let edges = get_edges(nfa);
+    let edges = nfa.get_edges();
     let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
     let mut result = true;
 
@@ -63,8 +43,6 @@ pub fn solve(original_nfa: &nfa::Nfa) -> Solution {
     }
     Solution {
         nfa: nfa.clone(),
-        nb_states_added,
-        nb_transitions_added,
         result,
         maximal_winning_strategy: strategy,
     }
@@ -76,16 +54,6 @@ fn get_omega_sheep(dim: usize, states: &[usize]) -> Sheep {
         sheep.set(*state, OMEGA);
     }
     sheep
-}
-
-fn get_edges(nfa: &Nfa) -> HashMap<nfa::Letter, Graph> {
-    if !nfa.is_complete() {
-        panic!("The NFA is not complete");
-    }
-    nfa.get_alphabet()
-        .iter()
-        .map(|action| (action.to_string(), nfa.get_support(action)))
-        .collect()
 }
 
 fn compute_action_flows(
@@ -127,13 +95,13 @@ mod tests {
         nfa.add_transition_by_index(0, 1, 'a');
         nfa.add_transition_by_index(1, 1, 'a');
         let strategy = Strategy::get_maximal_strategy(2, &["a"]);
-        let edges = get_edges(&nfa);
+        let edges = nfa.get_edges();
         let action_flows = compute_action_flows(&strategy, &edges);
         //a single action flow
         let flow: flow::Flow = Flow::from_entries(2, &[C0, OMEGA, C0, OMEGA]);
         assert_eq!(action_flows, HashSet::from([flow]));
 
-        let edges = get_edges(&nfa);
+        let edges = nfa.get_edges();
         assert_eq!(edges, {
             let mut map = HashMap::new();
             map.insert("a".to_string(), nfa.get_support("a"));
@@ -152,7 +120,7 @@ mod tests {
         nfa.add_transition_by_index(1, 1, 'a');
         nfa.add_transition_by_index(1, 1, 'b');
         let strategy = Strategy::get_maximal_strategy(2, &["a", "b"]);
-        let edges = get_edges(&nfa);
+        let edges = nfa.get_edges();
         let computed = compute_action_flows(&strategy, &edges);
         //a single action flow
         assert_eq!(
@@ -162,7 +130,7 @@ mod tests {
                 Flow::from_entries(2, &[OMEGA, C0, OMEGA, OMEGA]),
             ])
         );
-        let edges = get_edges(&nfa);
+        let edges = nfa.get_edges();
         assert_eq!(edges.len(), 2);
         assert_eq!(edges.get("a").unwrap(), &nfa.get_support(&"a"));
         assert_eq!(edges.get("b").unwrap(), &nfa.get_support(&"b"));
@@ -193,12 +161,8 @@ mod tests {
         nfa.add_transition_by_index(0, 1, 'a');
         nfa.add_transition_by_index(0, 2, 'a');
         nfa.add_transition_by_index(1, 2, 'a');
-        assert!(!nfa.is_complete());
         let solution = solve(&nfa);
-        assert_eq!(
-            solution.maximal_winning_strategy.dim().unwrap(),
-            nb_states + 1
-        );
+        assert!(!solution.result);
     }
 
     #[test]
