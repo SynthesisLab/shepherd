@@ -38,3 +38,20 @@ By default, a tex file and a pdf file are generated, assuming `pdflatex`is insta
 The output is formatted using the template `latex/solution.template.tex`.
 The tex conversion and pdf compilations can be optionally disabled, and the tex processor can also be modified,
 run `cargo run -- -help` for more details.
+
+## DOT-files as input
+
+You can give the input NFA in [graphviz DOT](https://graphviz.org/docs/layouts/dot/) format 
+by setting the input-format as "dot" and give a path to a dot-file as input file:
+
+```cargo run -- -i dot -f examples/bottleneck-1-ab.dot```
+
+The input graphs are interpret as NFA using the following convention.
+
+- All nodes except for one special node with id "init" are states of the NFA;
+- Initial states are those which have an unlabeled edge from "init" into it;
+- Accepting states are those with attribute "shape:doublecircle";
+- Every edge with "label" attribute results in a transition over the value of that label
+
+See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the simple bottleneck in `examples/bottleneck-1-ab.tikz`.
+>>>>>>> 01f84c0 (README: add docs for dot input)
