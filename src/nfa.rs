@@ -58,20 +58,21 @@ impl Nfa {
         // get a graph from the DOT string
         let graph = canonical::Graph::from(ast::Graph::try_from(input).unwrap());
 
-
         // extract nodes with labels:
         // - ignore state with label "init"
         // - interpret nodes with attribute "shape:doublecircle" as accepting states
-        for (id,node) in graph.nodes.set {
+        for (id, node) in graph.nodes.set {
             //println!("{:#?}", node);  // help me debug
-            
+
             // skip over artificial "init" state
-            if id.eq("init") { continue; }
+            if id.eq("init") {
+                continue;
+            }
 
             //println!("state {}", id);
-            states.push(id.clone());  // keep node.id as state id
+            states.push(id.clone()); // keep node.id as state id
 
-            for (k,v) in node.attr.elems {
+            for (k, v) in node.attr.elems {
                 //println!("  {k}:{v}");
                 if k.eq("label") {
                     // remove double quotes around node labels
@@ -79,7 +80,7 @@ impl Nfa {
                     //println!("  Label: {}", l);
                     names.insert(node.id.clone(), l.to_string());
                 }
-                if k.eq("shape") && v.eq("doublecircle"){
+                if k.eq("shape") && v.eq("doublecircle") {
                     //println!("state {} is accepting", node.id);
                     finals.insert(node.id.clone());
                 }
@@ -90,13 +91,13 @@ impl Nfa {
         // also define set of initial states as those where "init" has an edge into.
         for edge in graph.edges.set {
             //println!("{:#?}", edge);
-            
+
             // if an edge from init to X exists then X interpreted as initial state.
-            if edge.from.eq("init"){
+            if edge.from.eq("init") {
                 //println!("{:#?}", edge);
                 initials.insert(edge.to.clone());
             }
-            for (k,v) in edge.attr.elems {
+            for (k, v) in edge.attr.elems {
                 //println!("  {k}:{v}");
                 if k.eq("label") {
                     // remove double quotes around labels
@@ -106,7 +107,7 @@ impl Nfa {
                 }
             }
         }
-        
+
         // Create NFA struct and filling it with data from auxiliary boxes
         let mut nfa = Nfa {
             states,
@@ -116,7 +117,7 @@ impl Nfa {
         };
         for state in initials.iter() {
             //println!("IN {:#?}", state);
-            nfa.add_initial(&state);
+            nfa.add_initial(state);
         }
         for state in finals {
             nfa.add_final(&state);
@@ -200,7 +201,18 @@ impl Nfa {
     }
 
     #[allow(dead_code)]
-    pub fn add_transition_by_index(&mut self, from: State, to: State, label: char) {
+    pub fn add_transition_by_index1(&mut self, from: State, to: State, label: char) {
+        self.check_state(from);
+        self.check_state(to);
+        self.transitions.push(Transition {
+            from,
+            label: label.to_string(),
+            to,
+        });
+    }
+
+    #[allow(dead_code)]
+    pub fn add_transition_by_index2(&mut self, from: State, to: State, label: &str) {
         self.check_state(from);
         self.check_state(to);
         self.transitions.push(Transition {
@@ -344,10 +356,10 @@ mod test {
     #[test]
     fn parity() {
         let mut nfa = Nfa::from_size(2);
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 0, 'a');
-        nfa.add_transition_by_index(0, 0, 'b');
-        nfa.add_transition_by_index(1, 1, 'b');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 0, 'a');
+        nfa.add_transition_by_index1(0, 0, 'b');
+        nfa.add_transition_by_index1(1, 1, 'b');
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(0);
 
@@ -360,8 +372,8 @@ mod test {
     #[test]
     fn a_b_star() {
         let mut nfa = Nfa::from_size(2);
-        nfa.add_transition_by_index(0, 1, 'a');
-        nfa.add_transition_by_index(1, 0, 'b');
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(1, 0, 'b');
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(0);
     }

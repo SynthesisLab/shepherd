@@ -6,3 +6,6 @@
 *.log
 ./*.pdf
 ./*.tex
+*tex
+*pdf
+*(busy)
