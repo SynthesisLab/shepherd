@@ -68,7 +68,7 @@ impl Nfa {
             // skip over artificial "init" state
             if id.eq("init") { continue; }
 
-            println!("state {}", id);
+            //println!("state {}", id);
             states.push(id.clone());  // keep node.id as state id
 
             for (k,v) in node.attr.elems {
@@ -76,7 +76,7 @@ impl Nfa {
                 if k.eq("label") {
                     // remove double quotes around node labels
                     let l = v.trim_matches(|c| c == '"');
-                    println!("  Label: {}", l);
+                    //println!("  Label: {}", l);
                     names.insert(node.id.clone(), l.to_string());
                 }
                 if k.eq("shape") && v.eq("doublecircle"){
@@ -102,7 +102,7 @@ impl Nfa {
                     // remove double quotes around labels
                     let l = v.trim_matches(|c| c == '"');
                     transitions.push((edge.from.clone(), l.to_string(), edge.to.clone()));
-                    //println!("{} --{}--> {} ", edge.from, v, edge.to);
+                    //println!("{} --{}--> {} ", edge.from, l, edge.to);
                 }
             }
         }
@@ -115,7 +115,7 @@ impl Nfa {
             transitions: vec![],
         };
         for state in initials.iter() {
-            println!("IN {:#?}", state);
+            //println!("IN {:#?}", state);
             nfa.add_initial(&state);
         }
         for state in finals {
