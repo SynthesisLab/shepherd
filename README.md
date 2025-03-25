@@ -35,4 +35,6 @@ The file ```examples.pdf```at the root give details about examples.
 ## Get the solution in tex and pdf format
 
 By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
-That can be changed with the options (check `--help` for more details).
+The output is formatted using the template `latex/solution.template.tex`.
+The tex conversion and pdf compilations can be optionally disabled, and the tex processor can also be modified,
+run `cargo run -- -help` for more details.

@@ -17,19 +17,20 @@ mod strategy;
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(short, long, help = "The path to the input file")]
     filename: String,
 
-    #[arg(short, long, default_value = "tikz")]
+    #[arg(short, long, default_value = "tikz", help = "The input format")]
     input_type: String,
 
-    #[arg(short, long, action)]
+    //adds an explanation to the help message
+    #[arg(long, action, help = "Do not generate tex output")]
     no_tex_output: bool,
 
-    #[arg(long, action)]
+    #[arg(long, action, help = "Do not generate pdf output")]
     no_pdf_output: bool,
 
-    #[arg(long, default_value = "pdflatex")]
+    #[arg(long, default_value = "pdflatex", help = "The latex processor to use")]
     latex_processor: String,
 }
 

@@ -15,7 +15,7 @@ pub struct Solution {
 
 impl Solution {
     pub fn generate_latex(&self, output_path: &str, tikz_path: Option<&str>) {
-        let template_content = include_str!("../latex/resultat.template.tex");
+        let template_content = include_str!("../latex/solution.template.tex");
 
         // Create Tera instance
         let mut tera = Tera::default();
