@@ -9,3 +9,4 @@ env_logger = "0.11"
 regex = "1"
 clap = { version = "4.0", features = ["derive"] }
 tera = "1.19"
+dot-parser = "0.3.3"
