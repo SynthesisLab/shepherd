@@ -79,8 +79,8 @@ fn main() {
             println!("{}", String::from_utf8_lossy(&output.stderr));
             //check whether file output_path_pdf exists
             if !std::path::Path::new(&output_path_pdf).exists() {
-                write(&"pdflatex_stdout.log", &output.stdout).expect("Failed to write stdout log");
-                write(&"pdflatex_stderr.log", &output.stderr).expect("Failed to write stderr log");
+                write("pdflatex_stdout.log", &output.stdout).expect("Failed to write stdout log");
+                write("pdflatex_stderr.log", &output.stderr).expect("Failed to write stderr log");
                 eprintln!(
                 "error occurred. Check pdflatex_stdout.log and pdflatex_stderr.log for details."
             );
