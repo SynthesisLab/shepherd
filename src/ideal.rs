@@ -240,10 +240,10 @@ impl Ideal {
         edges: &crate::graph::Graph,
         ideal: &mut Ideal,
     ) {
-        if ideal.contains(&candidate) {
+        if ideal.contains(candidate) {
             return;
         }
-        if self.is_safe(&candidate, edges) {
+        if self.is_safe(candidate, edges) {
             ideal.insert(candidate);
             return;
         }
@@ -263,7 +263,7 @@ impl Ideal {
                     } else {
                         candidate.set(i, Coef::Value(c / 2));
                         if !self.is_safe(&candidate, edges) {
-                            c = c / 2;
+                            c /= 2;
                         } else {
                             candidate.set(i, Coef::Value(c));
                             self.safe_pre_image_from(&candidate, edges, ideal);
