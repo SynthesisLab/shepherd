@@ -27,14 +27,14 @@ and display the details in the terminal.
 
 The file ```examples.pdf```at the root give details about examples.
 
-## Inputs
+## Input
 
 ### Tikz files (produced by finsm.io)
 
 - Create an automaton using https://finsm.io
 - Copy paste the export (in Tikz format) in some local file and give it as input to shepherd, using the `-f` option.
 
-## DOT-files
+### DOT files
 
 You can give the input NFA in [graphviz DOT](https://graphviz.org/docs/layouts/dot/) format 
 by setting the input-format as "dot" and give a path to a dot-file as input file:
@@ -50,7 +50,7 @@ The input graphs are interpret as NFA using the following convention.
 
 See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the simple bottleneck in `examples/bottleneck-1-ab.tikz`.
 
-## Outputs
+## Output
 
 By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
 The output is formatted using the template `latex/solution.template.tex`.
