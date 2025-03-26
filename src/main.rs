@@ -188,4 +188,40 @@ mod tests {
 
         assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
+
+    #[test]
+    fn test_example_2_sorted_alpha() {
+        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
+        nfa.sort(&nfa::StateOrdering::Alphabetical);
+        let solution = solver::solve(&nfa);
+        assert!(!solution.result);
+        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        let ideala = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "a")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+
+        assert_eq!(*ideala, Ideal::from_vecs(&[&[C0, C0, C0, C0, C2]]));
+    }
+
+    #[test]
+    fn test_example_2_sorted_topo() {
+        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
+        nfa.sort(&nfa::StateOrdering::Topological);
+        let solution = solver::solve(&nfa);
+        assert!(!solution.result);
+        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        let ideala = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "a")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+
+        assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
+    }
 }

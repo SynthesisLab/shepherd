@@ -367,15 +367,19 @@ impl Nfa {
                 panic!("Error reading file '{}': '{}'", &path, e);
             }
         };
-        nfa.reorder_states(state_ordering);
+        nfa.sort(state_ordering);
         nfa
     }
 
-    fn reorder_states(&mut self, state_ordering: &StateOrdering) {
+    //allow useless pub
+    #[allow(unused)]
+    pub fn sort(&mut self, state_ordering: &StateOrdering) {
         match state_ordering {
             StateOrdering::Input => {}
             StateOrdering::Alphabetical => {
-                self.states.sort();
+                let mut states_indices = (0..self.nb_states()).collect::<Vec<_>>();
+                states_indices.sort_by_key(|&i| self.states[i].as_str());
+                self.apply_reordering(&states_indices);
             }
             StateOrdering::Topological => {
                 self.sort_states_topologically();
