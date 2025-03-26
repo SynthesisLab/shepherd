@@ -265,7 +265,7 @@ impl Ideal {
             return false;
         }
 
-        let choices = edges.get_maximal_deterministic_subgraphs(dim);
+        let choices = edges.get_maximal_deterministic_subgraphs();
         //debug!("edges:\n{:?}\n", edges);
         //debug!("choices:\n{:?}\n", choices);
         choices.iter().all(|choice| {
@@ -401,7 +401,7 @@ mod test {
     //test issafe
     #[test]
     fn is_safe() {
-        let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, C1, C0], &[C0, C0, C1]]);
         let candidate = vec![C1, C0, C0];
         assert!(ideal.is_safe(&candidate, &edges));
@@ -410,7 +410,7 @@ mod test {
     #[test]
     fn is_safe2() {
         let c4 = Coef::Value(4);
-        let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c4, C0], &[C0, C0, c4]]);
         let candidate = vec![c4, C0, C0];
         assert!(ideal.is_safe(&candidate, &edges));
@@ -420,7 +420,7 @@ mod test {
     fn is_not_safe() {
         let c3 = Coef::Value(3);
         let c4 = Coef::Value(4);
-        let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C0, c3]]);
         let candidate = vec![c4, C0, C0];
         assert!(!ideal.is_safe(&candidate, &edges));
@@ -429,7 +429,7 @@ mod test {
     #[test]
     fn pre_image1() {
         let edges =
-            crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+            crate::graph::Graph::from_vec(4, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
         let ideal0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA]]);
 
         let pre_image0 = ideal0.safe_pre_image(&edges);
@@ -442,7 +442,7 @@ mod test {
     #[test]
     fn pre_image1bis() {
         let edges =
-            crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+            crate::graph::Graph::from_vec(4, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
         let ideal1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
         let pre_image1 = ideal1.safe_pre_image(&edges);
         assert_eq!(
@@ -457,7 +457,7 @@ mod test {
 
     #[test]
     fn pre_image2() {
-        let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal0 = Ideal::from_vecs(&[&[C0, C0, OMEGA], &[C0, OMEGA, C0]]);
         let pre_image0 = ideal0.safe_pre_image(&edges);
         assert_eq!(pre_image0, Ideal::from_vecs(&[&[C1, C0, C0]]));
@@ -465,7 +465,7 @@ mod test {
 
     #[test]
     fn pre_image3() {
-        let edges = crate::graph::Graph::from_vec(vec![(2, 3)]);
+        let edges = crate::graph::Graph::from_vec(4, vec![(2, 3)]);
         let ideal0 = Ideal::from_vecs(&[
             &[C0, C0, C0, OMEGA],
             &[C0, C0, OMEGA, C0],
@@ -482,16 +482,19 @@ mod test {
             &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
         ]);
-        let edges = crate::graph::Graph::from_vec(vec![
-            (0, 0),
-            (0, 1),
-            (1, 0),
-            (1, 1),
-            (2, 4),
-            (3, 5),
-            (4, 4),
-            (5, 5),
-        ]);
+        let edges = crate::graph::Graph::from_vec(
+            5,
+            vec![
+                (0, 0),
+                (0, 1),
+                (1, 0),
+                (1, 1),
+                (2, 4),
+                (3, 5),
+                (4, 4),
+                (5, 5),
+            ],
+        );
         let pre_image0 = ideal0.safe_pre_image(&edges);
         assert_eq!(
             pre_image0,
@@ -505,15 +508,10 @@ mod test {
             &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
         ]);
-        let edges = crate::graph::Graph::from_vec(vec![
-            (0, 0),
-            (1, 2),
-            (1, 3),
-            (3, 4),
-            (2, 5),
-            (4, 4),
-            (5, 5),
-        ]);
+        let edges = crate::graph::Graph::from_vec(
+            5,
+            vec![(0, 0), (1, 2), (1, 3), (3, 4), (2, 5), (4, 4), (5, 5)],
+        );
         let pre_image0 = ideal0.safe_pre_image(&edges);
         assert_eq!(
             pre_image0,

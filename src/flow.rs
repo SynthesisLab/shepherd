@@ -53,6 +53,7 @@ impl Flow {
         let other_entries = &other.entries;
         let dim = self.dim;
         let mut result: Vec<Coef> = vec![C0; dim * dim];
+        //not idiomatic but fast
         let mut k = 0;
         for i in 0..dim {
             let i0 = i * dim;
@@ -64,6 +65,7 @@ impl Flow {
                 for _l in 0..dim {
                     let c = std::cmp::min(entries[li], other_entries[lj]);
                     if c == OMEGA {
+                        //shortcut due to existence of a frequent max element, probably not found by the compiler
                         resultk = OMEGA;
                         break;
                     }
@@ -260,7 +262,7 @@ mod test {
     #[should_panic]
     fn from_domain_and_edges_panic_case() {
         let domain = sheep::Sheep::from_vec(vec![C1, C2, C3]);
-        let edges = Graph::from_vec(vec![(0, 1), (1, 3)]);
+        let edges = Graph::from_vec(2, vec![(0, 1), (1, 3)]);
         Flow::from_domain_and_edges(&domain, &edges);
     }
 
@@ -292,7 +294,7 @@ mod test {
     #[test]
     fn get_lines_vec_test() {
         let domain = sheep::Sheep::from_vec(vec![C1, C3, OMEGA]);
-        let edges = Graph::from_vec(vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
+        let edges = Graph::from_vec(3, vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
         let expected = [
             vec![vec![C0, C1, C0]],
             vec![
@@ -318,7 +320,7 @@ mod test {
     #[test]
     fn from_domain_and_edges_test() {
         let domain = sheep::Sheep::from_vec(vec![C1, C3, OMEGA]);
-        let edges = Graph::from_vec(vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
+        let edges = Graph::from_vec(3, vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
         let flows = Flow::from_domain_and_edges(&domain, &edges);
         let expected = vec![
             Flow {

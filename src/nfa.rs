@@ -335,6 +335,7 @@ impl Nfa {
 
     pub(crate) fn get_support(&self, action: &str) -> crate::graph::Graph {
         Graph::new(
+            self.states.len(),
             &self
                 .transitions
                 .iter()

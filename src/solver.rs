@@ -103,11 +103,14 @@ mod tests {
         assert_eq!(action_flows, HashSet::from([flow]));
 
         let edges = nfa.get_edges();
-        assert_eq!(edges, {
-            let mut map = HashMap::new();
-            map.insert("a".to_string(), nfa.get_support("a"));
-            map
-        });
+        let grapha = edges
+            .get("a")
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        let grapha_from_nfa = nfa.get_support("a").iter().cloned().collect::<HashSet<_>>();
+        assert_eq!(grapha, grapha_from_nfa);
     }
 
     #[test]
@@ -133,8 +136,23 @@ mod tests {
         );
         let edges = nfa.get_edges();
         assert_eq!(edges.len(), 2);
-        assert_eq!(edges.get("a").unwrap(), &nfa.get_support(&"a"));
-        assert_eq!(edges.get("b").unwrap(), &nfa.get_support(&"b"));
+        let grapha = edges
+            .get("a")
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+
+        let graphb = edges
+            .get("b")
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        let grapha_from_nfa = nfa.get_support("a").iter().cloned().collect::<HashSet<_>>();
+        let graphb_from_nfa = nfa.get_support("b").iter().cloned().collect::<HashSet<_>>();
+        assert_eq!(grapha, grapha_from_nfa);
+        assert_eq!(graphb, graphb_from_nfa);
     }
 
     #[test]
