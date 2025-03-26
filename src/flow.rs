@@ -52,13 +52,29 @@ impl Flow {
         let entries = &self.entries;
         let other_entries = &other.entries;
         let dim = self.dim;
-        let mut result = vec![C0; dim * dim];
+        let mut result: Vec<Coef> = vec![C0; dim * dim];
+        let mut k = 0;
         for i in 0..dim {
+            let i0 = i * dim;
             for j in 0..dim {
-                result[i * dim + j] = (0..dim)
-                    .map(|k| std::cmp::min(entries[i * dim + k], other_entries[k * dim + j]))
-                    .max()
-                    .unwrap();
+                //invariant k = i * dim + j
+                let mut resultk = C0;
+                let mut li = i0;
+                let mut lj = j;
+                for _l in 0..dim {
+                    let c = std::cmp::min(entries[li], other_entries[lj]);
+                    if c == OMEGA {
+                        resultk = OMEGA;
+                        break;
+                    }
+                    if c > resultk {
+                        resultk = c;
+                    }
+                    li += 1;
+                    lj += dim;
+                }
+                result[k] = resultk;
+                k += 1;
             }
         }
         Flow {
