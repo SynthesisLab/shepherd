@@ -78,6 +78,9 @@ Run
 
 for all details.
 
+##Perfs
 
+```cargo build --release```
+```./target/release/shepherd -s topological -i dot -f examples/bottleneck-2-staged.dot```
 
 
