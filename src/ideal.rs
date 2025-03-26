@@ -35,7 +35,29 @@ type Herd = Vec<Sheep>;
 type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollection) -> Herd>;
 static PRODUCT_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
-        partitions::cartesian_product(possible_coefs)
+        let downward_closure = possible_coefs
+            .iter()
+            .map(|v| {
+                let is_omega = v.contains(&OMEGA);
+                let coef = v
+                    .iter()
+                    .filter_map(|&x| match x {
+                        OMEGA => None,
+                        Coef::Value(c) => Some(c),
+                    })
+                    .next();
+
+                match (is_omega, coef) {
+                    (false, None) => vec![C0],
+                    (true, None) => vec![OMEGA],
+                    (false, Some(c)) => (0..c + 1).map(Coef::Value).collect(),
+                    (true, Some(c)) => std::iter::once(OMEGA)
+                        .chain((0..c + 1).map(Coef::Value))
+                        .collect(),
+                }
+            })
+            .collect::<Vec<_>>();
+        partitions::cartesian_product(&downward_closure)
             .into_iter()
             .map(Sheep::from_vec)
             .collect()
@@ -226,13 +248,18 @@ impl Ideal {
         let mut result = Ideal::new();
         let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
         for candidate in candidates {
-            self.safe_pre_image_from(&candidate, edges, &mut result);
+            if !result.contains(&candidate) && self.is_safe(&candidate, edges) {
+                result.insert(&candidate);
+            }
+            //self.safe_pre_image_from(&candidate, edges, &mut result);
         }
         result.minimize();
         //println!("result {}\n", result);
         result
     }
 
+    #[allow(dead_code)]
+    //below is a sad story: an optimized version of safe_pre_image which is extremely slow
     fn safe_pre_image_from(
         &self,
         candidate: &Sheep,
@@ -249,26 +276,28 @@ impl Ideal {
             return;
         }
         //println!("{} refined", candidate);
+        let mut candidate_copy = candidate.clone();
         for i in 0..candidate.len() {
             let ci = candidate.get(i);
             if ci == C0 || ci == OMEGA {
                 continue;
             }
             if let Coef::Value(c) = ci {
-                let mut candidate = candidate.clone();
                 let mut c = c - 1;
                 loop {
                     if c <= 2 {
-                        candidate.set(i, Coef::Value(c));
-                        self.safe_pre_image_from(&candidate, edges, ideal);
+                        candidate_copy.set(i, Coef::Value(c));
+                        self.safe_pre_image_from(&candidate_copy, edges, ideal);
+                        candidate_copy.set(i, ci);
                         break;
                     } else {
-                        candidate.set(i, Coef::Value(c / 2));
-                        if !self.is_safe(&candidate, edges) {
+                        candidate_copy.set(i, Coef::Value(c / 2));
+                        if !self.is_safe(&candidate_copy, edges) {
                             c /= 2;
                         } else {
-                            candidate.set(i, Coef::Value(c));
-                            self.safe_pre_image_from(&candidate, edges, ideal);
+                            candidate_copy.set(i, Coef::Value(c));
+                            self.safe_pre_image_from(&candidate_copy, edges, ideal);
+                            candidate_copy.set(i, ci);
                             break;
                         }
                     }
