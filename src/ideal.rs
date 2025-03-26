@@ -169,7 +169,7 @@ impl Ideal {
         let is_omega_possible = (0..dim)
             .map(|i| {
                 let succ = edges.get_successors(i);
-                return !succ.is_empty() && self.0.iter().any(|sheep| sheep.all_omega(&succ));
+                !succ.is_empty() && self.0.iter().any(|sheep| sheep.all_omega(&succ))
             })
             .collect::<Vec<_>>();
 

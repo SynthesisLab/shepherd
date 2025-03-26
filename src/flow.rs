@@ -113,7 +113,7 @@ impl Flow {
     }
 
     pub fn pre_image(&self, target: &[nfa::State]) -> Sheep {
-        return Sheep::from_vec(
+        Sheep::from_vec(
             (0..self.dim)
                 .map(|i| {
                     target
@@ -123,7 +123,7 @@ impl Flow {
                         .unwrap()
                 })
                 .collect(),
-        );
+        )
     }
 
     #[allow(dead_code)]

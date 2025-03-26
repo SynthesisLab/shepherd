@@ -92,7 +92,7 @@ impl FlowSemigroup {
                 .collect::<Vec<_>>()
                 .join("\n")
         );*/
-        return others.iter().any(|other| flow <= other);
+        others.iter().any(|other| flow <= other)
     }
 
     fn minimize(&mut self) {

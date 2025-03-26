@@ -22,7 +22,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run Clippy
-        run: cargo clippy -- -D warnings
+        run: |
+	  set -x
+          cargo clippy -- -D warnings
 
       - name: Run Tests
-        run: cargo test --all-features --verbose
+        run: |
+	  set -x
+	  cargo test --all-features --verbose
