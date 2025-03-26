@@ -1,0 +1,88 @@
+digraph NFA {
+    node [shape="circle"]
+    s [label="s", shape=circle];
+    { rank=same;  // just for drawing
+    l [label="l"];
+    r [label="r"];
+    }
+    c [label="c"];
+    e [label="e", shape=doublecircle];
+    init [label="",shape=none,height=0,width=0];
+
+    // structure of outer gadget with capacity 2
+    init -> s;
+    s -> l [label="b"];
+    s -> r [label="b"];
+    l -> l [label="a"];
+    l -> r [label="a"];
+    r -> l [label="a"];
+    r -> r [label="a"];
+    c -> e [label="e"];
+
+
+
+    // left gadget with capacity 1
+    subgraph cluster_red {
+        style=invis;  // do not draw a box around the subgraph
+
+        // states of gadget
+        { rank=same;  // just for drawing
+        l1 [label="l1"];
+        r1 [label="r1"];
+        }
+        c1 [label="c1"];
+
+        // diamond structure
+        l1 -> c1 [label="c1"];
+        r1 -> c1 [label="d1"];
+
+        // all actions from other gadget are toxic!
+    }
+
+    // moving into and out of the gadget
+    l -> l1 [label="b1"];  // begin
+    l -> r1 [label="b1"];  // begin
+    c1 -> c [label="e1"];  // end
+
+
+    // right gadget with capacity 1
+    subgraph cluster_blue {
+        style=invis;  // do not draw a box around the subgraph
+
+        // states of the gadget
+        { rank=same;  // just for drawing
+        l2 [label="l2"];
+        r2 [label="r2"];
+        }
+        c2 [label="c2"];
+        
+        // diamond structure
+        l2 -> c2 [label="c2"];
+        r2 -> c2 [label="d2"];
+        
+        // ignore all actions from other gadget
+        {
+            edge [style="invis"]
+            l2 -> l2 [label="b1"];
+            l2 -> l2 [label="c1"];
+            l2 -> l2 [label="d1"];
+            l2 -> l2 [label="e1"];
+            r2 -> r2 [label="b1"];
+            r2 -> r2 [label="c1"];
+            r2 -> r2 [label="d1"];
+            r2 -> r2 [label="e1"];
+            c2 -> c2 [label="b1"];
+            c2 -> c2 [label="c1"];
+            c2 -> c2 [label="d1"];
+            c2 -> c2 [label="e1"];
+        }
+    }
+
+    // moving into and out of the gadget
+    r -> l2 [label="b1"];  // begin
+    r -> r2 [label="b1"];  // begin
+    c2 -> c [label="e2"];  // end
+
+    
+
+}
