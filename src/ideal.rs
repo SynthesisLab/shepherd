@@ -220,19 +220,17 @@ impl Ideal {
                 }
             })
             .collect::<Vec<_>>();
-        print!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        print!("is_omega_possible: {:?}\n", is_omega_possible);
-        print!("possible_coefs: {:?}\n", possible_coefs);
+        debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        debug!("is_omega_possible: {:?}\n", is_omega_possible);
+        debug!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
         let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
-        println!("{} candidates", candidates.len());
         for candidate in candidates {
-            println!("candidate {}", candidate);
             self.safe_pre_image_from(&candidate, edges, &mut result);
         }
         result.minimize();
-        print!("result {}\n", result);
+        debug!("result {}\n", result);
         result
     }
 
@@ -242,13 +240,10 @@ impl Ideal {
         edges: &crate::graph::Graph,
         ideal: &mut Ideal,
     ) {
-        println!("{:?}\n", candidate);
         if ideal.contains(&candidate) {
-            println!("already in");
             return;
         }
         if self.is_safe(&candidate, edges) {
-            println!("new safe");
             ideal.insert(candidate);
             return;
         }
