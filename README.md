@@ -32,7 +32,7 @@ For dot files
 
 Check the file ```examples.pdf``` at the root  which gives an overview of all available examples.
 
-## In
+## Input
 
 Two kind of input files can be processed by `shepherd`.
 
@@ -57,9 +57,9 @@ The input graphs are interpret as NFA using the following convention.
 
 See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the simple bottleneck in `examples/bottleneck-1-ab.tikz`.
 
-## Out
+## Output
 
-Each computation produces two outpurs: a tex file and a pdf file.
+Each computation produces two outputs: a tex file and a pdf file.
 The `tex` output is formatted using the template `latex/solution.template.tex`.
 The `pdf`output is generated using `pdflatex`.
 
