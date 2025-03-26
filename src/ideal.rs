@@ -82,7 +82,7 @@ impl Ideal {
     /// ```
     /// use crate::ideal::Ideal;
     /// use crate::coef::{C0, C1, C2, OMEGA};
-    /// let mut ideal0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
+    /// let mut ideal0 = Ideal::&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
     /// let mut ideal1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
     /// let ideal2 = Ideal::from_vecs(&[&[C1, OMEGA, C1, C2], &[C2, OMEGA, C1, C1]]);
     /// let ideal0original = ideal0.clone();
@@ -103,8 +103,9 @@ impl Ideal {
             if other.contains(sheep) {
                 new_sheeps.insert(sheep);
             } else {
+                changed = true;
                 for other_sheep in &other.0 {
-                    changed |= new_sheeps.insert(&Sheep::intersection(sheep, other_sheep));
+                    new_sheeps.insert(&Sheep::intersection(sheep, other_sheep));
                 }
             }
         }
@@ -113,7 +114,10 @@ impl Ideal {
         changed
     }
 
-    /// Compute the pre-image of the ideal by a graph.
+    /// Compute the safe-pre-image of the ideal by a graph.
+    /// Unsafe is:
+    /// - either putting some weight on a node with no successor
+    /// - or taking the risk that the successor configuration is not in the ideal
     /// The method is used in the solver to compute the set of configurations from which it is safe to play an action.
     /// The method returns the set of configurations which are safe to play.
     ///
@@ -143,22 +147,33 @@ impl Ideal {
     ///        Ideal::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
     /// );
     /// ```
-    pub(crate) fn pre_image(&self, edges: &crate::graph::Graph) -> Ideal {
+    pub(crate) fn safe_pre_image(&self, edges: &crate::graph::Graph) -> Ideal {
         let dim = self.0.iter().next().map_or(0, |x| x.len());
-        if dim == 0 {
+        if dim == 0 || self.is_empty() {
             return Ideal::new();
         }
+        //compute for every i whether omega should be allowed at i,
+        //this is the case iff there exists a sheep in the ideal such that
+        //on that coordinate the non-empty set of successors all lead to omega
+        let is_omega_possible = (0..dim)
+            .map(|i| {
+                let succ = edges.get_successors(i);
+                return !succ.is_empty() && self.0.iter().any(|sheep| sheep.all_omega(&succ));
+            })
+            .collect::<Vec<_>>();
 
         //compute for every j the maximal finite coef appearing at index j, if exists
-        let max_finite_coordsj = (0..dim)
+        //omega are turned to 1
+        let max_finite_coordsj: Vec<u16> = (0..dim)
             .map(|j| {
                 self.0
                     .iter()
-                    .filter_map(|sheep| match sheep.get(j) {
-                        Coef::Omega => None,
-                        Coef::Value(c) => Some(c),
+                    .map(|sheep| match sheep.get(j) {
+                        Coef::Omega => 1, //if we can really send omega, this will be managed by is_omega_possible
+                        Coef::Value(c) => c,
                     })
                     .max()
+                    .unwrap() //non-empty
             })
             .collect::<Vec<_>>();
 
@@ -168,22 +183,15 @@ impl Ideal {
                     edges
                         .get_successors(i)
                         .iter()
-                        .filter_map(|&j| max_finite_coordsj[j])
+                        .map(|&j| max_finite_coordsj[j])
                         .max()
+                        .unwrap_or(0)
                 }
             })
             .collect::<Vec<_>>();
 
-        //compute for every i whether omega is possible at i, which happens iff there exists a sheep in the ideal such that all successors lead to omega
-        let is_omega_possible = (0..dim)
-            .map(|i| {
-                let succ = edges.get_successors(i);
-                return self.0.iter().any(|sheep| sheep.all_omega(&succ));
-            })
-            .collect::<Vec<_>>();
-
         //print max_finite_coords and is_omega_possible
-        debug!("preimage of {}\n by\n{}\n", self, edges);
+        print!("preimage of\n{}\n by\n{}\n", self, edges);
 
         let possible_coefs = (0..dim)
             .map(|i| {
@@ -191,23 +199,23 @@ impl Ideal {
                     max_finite_coordsi.get(i).unwrap(),
                     is_omega_possible.get(i).unwrap(),
                 ) {
-                    (Some(c), false) => (0..(std::cmp::max(*c, 1) + 1))
+                    (0, false) => vec![coef::Coef::Value(0)],
+                    (0, true) => vec![OMEGA],
+                    (c, false) => (0..(*c + 1))
                         .map(coef::Coef::Value)
                         .rev()
                         .collect::<Vec<_>>(),
-                    (Some(c), true) => (0..(std::cmp::max(*c, 1) + 1))
+                    (c, true) => (0..(*c + 1))
                         .map(coef::Coef::Value)
                         .chain(std::iter::once(OMEGA))
                         .rev()
                         .collect::<Vec<_>>(),
-                    (None, true) => vec![OMEGA],
-                    (None, false) => vec![], //no edge case
                 }
             })
             .collect::<Vec<_>>();
-        debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        debug!("is_omega_possible: {:?}\n", is_omega_possible);
-        debug!("possible_coefs: {:?}\n", possible_coefs);
+        print!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        print!("is_omega_possible: {:?}\n", is_omega_possible);
+        print!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
         for candidate in partitions::cartesian_product(&possible_coefs) {
@@ -218,12 +226,15 @@ impl Ideal {
             }
         }
         result.minimize();
-        debug!("result {}\n", result);
+        println!("result {}\n", result);
         result
     }
 
     /// Check whether it is safe to play the graph in  candidate, in the sense that it ensures
     /// the next configuration belongs to the ideal.
+    /// Unsafe is:
+    /// - either putting some weight on a node with no successor
+    /// - or taking the risk that the successor configuration is not in the ideal
     ///
     /// # Examples
     /// ```
@@ -247,6 +258,14 @@ impl Ideal {
     /// ```
     fn is_safe(&self, candidate: &[Coef], edges: &crate::graph::Graph) -> bool {
         let dim = candidate.len();
+
+        //if we lose some sheep, forget about it
+        let lose_sheep =
+            (0..dim).any(|i| candidate[i] >= Coef::Value(1) && edges.get_successors(i).is_empty());
+        if lose_sheep {
+            return false;
+        }
+
         let choices = edges.get_maximal_deterministic_subgraphs(dim);
         //debug!("edges:\n{:?}\n", edges);
         //debug!("choices:\n{:?}\n", choices);
@@ -269,7 +288,7 @@ impl Ideal {
 
     /// Remove from the ideal any element strictly smaller than another.
     /// The method is used in the solver to keep the size of the representation small.
-    fn minimize(&mut self) -> bool {
+    pub fn minimize(&mut self) -> bool {
         //remove from self.0 any element strictly smaller than another
         let mut changed = false;
         for sheep in self
@@ -282,6 +301,10 @@ impl Ideal {
             changed |= self.0.remove(&sheep);
         }
         changed
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
@@ -365,6 +388,17 @@ mod test {
         );
     }
 
+    #[test]
+    fn restrict_to2() {
+        let mut ideal0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
+        let empty = Ideal::from_vecs(&[]);
+
+        assert!(empty.is_empty());
+        let changed0 = ideal0.restrict_to(&empty);
+        assert!(changed0);
+        assert!(ideal0.is_empty());
+    }
+
     //test issafe
     #[test]
     fn is_safe() {
@@ -399,7 +433,7 @@ mod test {
             crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
         let ideal0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA]]);
 
-        let pre_image0 = ideal0.pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges);
         assert_eq!(
             pre_image0,
             Ideal::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
@@ -411,7 +445,7 @@ mod test {
         let edges =
             crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
         let ideal1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
-        let pre_image1 = ideal1.pre_image(&edges);
+        let pre_image1 = ideal1.safe_pre_image(&edges);
         assert_eq!(
             pre_image1,
             Ideal::from_vecs(&[
@@ -426,7 +460,65 @@ mod test {
     fn pre_image2() {
         let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
         let ideal0 = Ideal::from_vecs(&[&[C0, C0, OMEGA], &[C0, OMEGA, C0]]);
-        let pre_image0 = ideal0.pre_image(&edges);
-        assert_eq!(pre_image0, Ideal::from_vecs(&[&[C1, OMEGA, OMEGA]]));
+        let pre_image0 = ideal0.safe_pre_image(&edges);
+        assert_eq!(pre_image0, Ideal::from_vecs(&[&[C1, C0, C0]]));
+    }
+
+    #[test]
+    fn pre_image3() {
+        let edges = crate::graph::Graph::from_vec(vec![(2, 3)]);
+        let ideal0 = Ideal::from_vecs(&[
+            &[C0, C0, C0, OMEGA],
+            &[C0, C0, OMEGA, C0],
+            &[C0, OMEGA, C0, C0],
+            &[OMEGA, C0, C0, C0],
+        ]);
+        let pre_image0 = ideal0.safe_pre_image(&edges);
+        assert_eq!(pre_image0, Ideal::from_vecs(&[&[C0, C0, OMEGA, C0]]));
+    }
+
+    #[test]
+    fn pre_image4() {
+        let ideal0 = Ideal::from_vecs(&[
+            &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
+            &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
+        ]);
+        let edges = crate::graph::Graph::from_vec(vec![
+            (0, 0),
+            (0, 1),
+            (1, 0),
+            (1, 1),
+            (2, 4),
+            (3, 5),
+            (4, 4),
+            (5, 5),
+        ]);
+        let pre_image0 = ideal0.safe_pre_image(&edges);
+        assert_eq!(
+            pre_image0,
+            Ideal::from_vecs(&[&[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0]])
+        );
+    }
+
+    #[test]
+    fn pre_image5() {
+        let ideal0 = Ideal::from_vecs(&[
+            &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
+            &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
+        ]);
+        let edges = crate::graph::Graph::from_vec(vec![
+            (0, 0),
+            (1, 2),
+            (1, 3),
+            (3, 4),
+            (2, 5),
+            (4, 4),
+            (5, 5),
+        ]);
+        let pre_image0 = ideal0.safe_pre_image(&edges);
+        assert_eq!(
+            pre_image0,
+            Ideal::from_vecs(&[&[OMEGA, C1, C0, OMEGA, OMEGA, C0]])
+        );
     }
 }

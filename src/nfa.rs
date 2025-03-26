@@ -7,6 +7,8 @@ use dot_parser::*;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::fs::File;
+use std::io::{self, Read};
 
 pub type State = usize;
 pub type Letter = String;
@@ -210,6 +212,8 @@ impl Nfa {
             to,
         });
     }
+
+    #[allow(dead_code)]
     pub fn add_transition_by_index2(&mut self, from: State, to: State, label: &str) {
         self.check_state(from);
         self.check_state(to);
@@ -325,6 +329,32 @@ impl Nfa {
                 .map(|t| (t.from, t.to))
                 .collect::<Vec<_>>(),
         )
+    }
+
+    /// Reads the content of the file
+    fn read_file(filename: &str) -> io::Result<String> {
+        let mut file = File::open(filename)?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+        Ok(content)
+    }
+
+    pub(crate) fn load_from_file(path: &str, input_type: &str) -> Self {
+        match Self::read_file(path) {
+            Ok(content) => match input_type {
+                "tikz" => Self::from_tikz(&content),
+                "dot" => Self::from_dot(&content),
+                _ => {
+                    panic!(
+                        "Invalid format: '{}', known format {{ tikz, dot }}.",
+                        input_type
+                    );
+                }
+            },
+            Err(e) => {
+                panic!("Error reading file '{}': '{}'", &path, e);
+            }
+        }
     }
 }
 

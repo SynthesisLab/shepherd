@@ -32,6 +32,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         debug!("Semigroup:\n{}", semigroup);
         let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
         winning_ideal.insert(&final_ideal);
+        winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
         debug!("Strategy before restriction:\n{}", strategy);
         let changed = strategy.restrict_to(winning_ideal, &edges);
@@ -179,55 +180,30 @@ mod tests {
         assert_eq!(solution.result, false);
     }
 
-    pub(crate) fn get_nfa(name: &str) -> Nfa {
-        match name {
-            "((a#b){a,b})#" => {
-                let mut nfa = Nfa::from_states(&["0", "1", "2", "3", "4", "5"]);
-                nfa.add_initial("0");
-                nfa.add_final("4");
-                nfa.add_transition("0", "0", "a");
-                nfa.add_transition("0", "1", "a");
-                nfa.add_transition("1", "0", "a");
-                nfa.add_transition("1", "1", "a");
-                nfa.add_transition("4", "4", "a");
-                nfa.add_transition("5", "5", "a");
-
-                nfa.add_transition("0", "0", "b");
-                nfa.add_transition("4", "4", "b");
-                nfa.add_transition("5", "5", "b");
-
-                nfa.add_transition("1", "2", "b");
-                nfa.add_transition("1", "3", "b");
-
-                nfa.add_transition("2", "4", "a");
-                nfa.add_transition("2", "5", "b");
-                nfa.add_transition("3", "4", "b");
-                nfa.add_transition("3", "5", "a");
-                nfa.add_transition("1", "0", "a");
-                nfa.add_transition("1", "1", "a");
-                nfa.add_transition("4", "4", "a");
-                nfa.add_transition("5", "5", "a");
-
-                nfa.add_transition("0", "0", "b");
-                nfa.add_transition("4", "4", "b");
-                nfa.add_transition("5", "5", "b");
-
-                nfa.add_transition("1", "2", "b");
-                nfa.add_transition("1", "3", "b");
-
-                nfa.add_transition("2", "4", "a");
-                nfa.add_transition("2", "5", "b");
-                nfa.add_transition("3", "4", "b");
-                nfa.add_transition("3", "5", "a");
-                nfa
-            }
-            _ => panic!("Unknown NFA"),
-        }
-    }
-
     #[test]
     fn test_solve_positive_two_letters() {
-        let nfa = get_nfa("((a#b){a,b})#");
+        let mut nfa = Nfa::from_states(&["0", "1", "2", "3", "4", "5"]);
+        nfa.add_initial("0");
+        nfa.add_final("4");
+        nfa.add_transition("0", "0", "a");
+        nfa.add_transition("0", "1", "a");
+        nfa.add_transition("1", "0", "a");
+        nfa.add_transition("1", "1", "a");
+        nfa.add_transition("4", "4", "a");
+        nfa.add_transition("5", "5", "a");
+
+        nfa.add_transition("0", "0", "b");
+        nfa.add_transition("4", "4", "b");
+        nfa.add_transition("5", "5", "b");
+
+        //enter the <= 1 bottleneck
+        nfa.add_transition("1", "2", "b");
+        nfa.add_transition("1", "3", "b");
+
+        nfa.add_transition("2", "4", "a");
+        nfa.add_transition("2", "5", "b");
+        nfa.add_transition("3", "4", "b");
+        nfa.add_transition("3", "5", "a");
 
         let solution = solve(&nfa);
         print!("{}", solution);

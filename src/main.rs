@@ -1,6 +1,5 @@
 use clap::Parser;
-use std::fs::{write, File};
-use std::io::{self, Read};
+use std::fs::write;
 use std::process;
 mod coef;
 mod flow;
@@ -39,25 +38,7 @@ fn main() {
 
     let args = Args::parse();
 
-    // Get the arguments
-
-    let tikz_path = args.filename;
-
-    let nfa = match read_file(&tikz_path) {
-        Ok(content) => match args.input_type.as_str() {
-            "tikz" => nfa::Nfa::from_tikz(&content),
-            "dot" => nfa::Nfa::from_dot(&content),
-            _ => {
-                eprintln!("Invalid format: {}", args.input_type);
-                eprintln!("Known formats: [tikz]");
-                process::exit(1);
-            }
-        },
-        Err(e) => {
-            eprintln!("Error reading file '{}': '{}'", &tikz_path, e);
-            process::exit(1);
-        }
-    };
+    let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_type);
 
     let solution = solver::solve(&nfa);
 
@@ -65,13 +46,13 @@ fn main() {
 
     if !args.no_tex_output {
         //remove trailing path from filename
-        let filename = tikz_path.split('/').last().unwrap();
+        let filename = args.filename.split('/').last().unwrap();
         let output_path_tex = format!("{}.solution.tex", filename);
         let output_path_pdf = format!("{}.solution.pdf", filename);
         let is_tikz = args.input_type == "tikz";
         solution.generate_latex(
             &output_path_tex,
-            if is_tikz { Some(&tikz_path) } else { None },
+            if is_tikz { Some(&args.filename) } else { None },
         );
         println!("Solution written to tex file './{}'", output_path_tex);
         if !args.no_pdf_output {
@@ -98,10 +79,40 @@ fn main() {
     }
 }
 
-/// Reads the content of the file
-fn read_file(filename: &str) -> io::Result<String> {
-    let mut file = File::open(filename)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    Ok(content)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::coef::{C0, C1, OMEGA};
+    use crate::ideal::Ideal;
+
+    const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
+
+    #[test]
+    fn test_example_1() {
+        let nfa = nfa::Nfa::from_tikz(&EXAMPLE1);
+        let solution = solver::solve(&nfa);
+        print!("{}", solution);
+        assert!(!solution.result);
+        assert_eq!(solution.maximal_winning_strategy.iter().count(), 2);
+        let ideala = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "a")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+        let idealb = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "b")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+
+        assert_eq!(
+            *ideala,
+            Ideal::from_vecs(&[&[C1, C0, C0, C0, C0], &[C0, OMEGA, C0, C0, C0]])
+        );
+        assert_eq!(*idealb, Ideal::from_vecs(&[&[C0, C0, OMEGA, C0, C0]]));
+    }
 }

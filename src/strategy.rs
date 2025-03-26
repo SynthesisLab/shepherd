@@ -36,8 +36,7 @@ impl Strategy {
         let mut result = false;
         for (a, ideal) in self.0.iter_mut() {
             let edges = edges_per_letter.get(a).unwrap();
-            //compute the subset of safe which gurantees to stay in safe when playing the letter
-            let very_safe = safe.pre_image(edges);
+            let very_safe = safe.safe_pre_image(edges);
             result |= ideal.restrict_to(&very_safe);
         }
         result
@@ -54,10 +53,14 @@ impl fmt::Display for Strategy {
             .0
             .iter()
             .map(|x| {
-                format!(
-                    "Play action '{}' in the downward-closure of\n{}\n",
-                    x.0, x.1
-                )
+                if x.1.is_empty() {
+                    format!("Never play action '{}'", x.0)
+                } else {
+                    format!(
+                        "Play action '{}' in the downward-closure of\n{}\n",
+                        x.0, x.1
+                    )
+                }
             })
             .collect();
         write!(f, "{}", vec.join("\n"))
