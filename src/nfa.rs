@@ -384,7 +384,6 @@ impl Nfa {
 
     fn apply_reordering(&mut self, new_order: &[usize]) {
         //blue monday
-        println!("before reordering {}", self);
         let old_to_new: Vec<_> = new_order
             .iter()
             .map(|&i| new_order.iter().position(|&x| new_order[x] == i).unwrap())
@@ -396,8 +395,6 @@ impl Nfa {
         });
         self.initial = self.initial.iter().map(|i| old_to_new[*i]).collect();
         self.accepting = self.accepting.iter().map(|i| old_to_new[*i]).collect();
-        println!("after reordering {}", self);
-        //panic!();
     }
 
     fn sort_states_topologically(&mut self) {
