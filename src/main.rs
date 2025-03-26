@@ -5,6 +5,7 @@ mod coef;
 mod flow;
 mod graph;
 mod ideal;
+mod memoizer;
 mod nfa;
 mod partitions;
 mod semigroup;

@@ -1,11 +1,12 @@
-use log::debug;
-
 use crate::coef::{Coef, OMEGA};
+use crate::memoizer::Memoizer;
 use crate::sheep::Sheep;
 use crate::{coef, partitions};
+use log::debug;
+use once_cell::sync::Lazy;
 use std::fmt;
+use std::sync::Mutex;
 use std::{collections::HashSet, vec::Vec};
-
 /*
 An ideal is mathmatically a downward closed set of vectors in N^S.
 It is represented as a set of sheep, all have the same dimension,
@@ -28,6 +29,14 @@ impl PartialEq for Ideal {
         self.is_contained_in(other) && other.is_contained_in(self)
     }
 }
+
+static PRODUCT_CACHE: Lazy<
+    Mutex<Memoizer<Vec<Vec<Coef>>, Vec<Vec<Coef>>, fn(&Vec<Vec<Coef>>) -> Vec<Vec<Coef>>>>,
+> = Lazy::new(|| {
+    Mutex::new(Memoizer::new(|possible_coefs| {
+        partitions::cartesian_product(possible_coefs)
+    }))
+});
 
 impl Ideal {
     /// Create an empty ideal.
@@ -219,7 +228,7 @@ impl Ideal {
         debug!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
-        for candidate in partitions::cartesian_product(&possible_coefs) {
+        for candidate in PRODUCT_CACHE.lock().unwrap().get(possible_coefs) {
             if self.is_safe(&candidate, edges) {
                 result.insert(&Sheep::from_vec(candidate));
             }
