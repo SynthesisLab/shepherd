@@ -36,12 +36,29 @@ digraph NFA {
         l1 -> c1 [label="c1"];
         r1 -> c1 [label="d1"];
 
-        // all actions from other gadget are toxic!
+        // ignore all actions from other gadget
+        {
+            //edge [style="invis"]
+            l1 -> l1 [label="b2"];
+            l1 -> l1 [label="c2"];
+            l1 -> l1 [label="d2"];
+            l1 -> l1 [label="e2"];
+            r1 -> r1 [label="b2"];
+            r1 -> r1 [label="c2"];
+            r1 -> r1 [label="d2"];
+            r1 -> r1 [label="e2"];
+            c1 -> c1 [label="b2"];
+            c1 -> c1 [label="c2"];
+            c1 -> c1 [label="d2"];
+            c1 -> c1 [label="e2"];
+        }
     }
 
     // moving into and out of the gadget
     l -> l1 [label="b1"];  // begin
+    l -> l1 [label="b2"];  // begin
     l -> r1 [label="b1"];  // begin
+    l -> r1 [label="b2"];  // begin
     c1 -> c [label="e1"];  // end
 
 
@@ -79,15 +96,22 @@ digraph NFA {
     }
 
     // moving into and out of the gadget
+    r -> l2 [label="b2"];  // begin
     r -> l2 [label="b1"];  // begin
+    r -> r2 [label="b2"];  // begin
     r -> r2 [label="b1"];  // begin
     c2 -> c [label="e2"];  // end
 
 
     // c ignores all subgadget actions
+    c -> c [label="b1"];
+    c -> c [label="c1"];
+    c -> c [label="d1"];
+    c -> c [label="e1"];
     c -> c [label="b2"];
     c -> c [label="c2"];
     c -> c [label="d2"];
     c -> c [label="e2"];
+    
 
 }
