@@ -27,19 +27,14 @@ and display the details in the terminal.
 
 The file ```examples.pdf```at the root give details about examples.
 
-## Generate input files in tikz format
+## Inputs
+
+### Tikz files (produced by finsm.io)
 
 - Create an automaton using https://finsm.io
 - Copy paste the export (in Tikz format) in some local file and give it as input to shepherd, using the `-f` option.
 
-## Get the solution in tex and pdf format
-
-By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
-The output is formatted using the template `latex/solution.template.tex`.
-The tex conversion and pdf compilations can be optionally disabled, and the tex processor can also be modified,
-run `cargo run -- -help` for more details.
-
-## DOT-files as input
+## DOT-files
 
 You can give the input NFA in [graphviz DOT](https://graphviz.org/docs/layouts/dot/) format 
 by setting the input-format as "dot" and give a path to a dot-file as input file:
@@ -54,4 +49,19 @@ The input graphs are interpret as NFA using the following convention.
 - Every edge with "label" attribute results in a transition over the value of that label
 
 See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the simple bottleneck in `examples/bottleneck-1-ab.tikz`.
->>>>>>> 01f84c0 (README: add docs for dot input)
+
+## Outputs
+
+By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
+The output is formatted using the template `latex/solution.template.tex`.
+The tex conversion and pdf compilations can be optionally disabled, and the tex processor can also be modified,
+run `cargo run -- -help` for more details.
+
+The states of the NFA can be reordered in order to make the generated reports more readable.
+Either topologically
+```cargo run -- -s topological -i dot -f examples/bottleneck-2-staged.dot```
+or alphabetically
+```cargo run -- -s alphabetical -i dot -f examples/bottleneck-2-staged.dot```
+
+
+
