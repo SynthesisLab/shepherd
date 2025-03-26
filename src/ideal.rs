@@ -300,6 +300,7 @@ impl Ideal {
     }
 
     fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
+        #[cfg(debug_assertions)]
         debug!("get_choices({}, {:?}, {:?})", dim, value, successors);
         match value {
             Coef::Value(0) => vec![Sheep::new(dim, C0)],

@@ -13,6 +13,7 @@ mod sheep;
 mod solution;
 mod solver;
 mod strategy;
+use log::LevelFilter;
 
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -52,7 +53,15 @@ struct Args {
 }
 
 fn main() {
-    env_logger::init();
+    #[cfg(debug_assertions)]
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Debug)
+        .init();
+
+    #[cfg(not(debug_assertions))]
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Info)
+        .init();
 
     let args = Args::parse();
 

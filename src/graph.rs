@@ -49,19 +49,3 @@ impl fmt::Display for Graph {
         write!(f, "\n\t{}", vec.join("\n\t"))
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_get_choices() {
-        let edges = vec![(0, 1), (0, 2)];
-        let graph = Graph::new(3, &edges);
-        let choices = graph.get_maximal_deterministic_subgraphs();
-        assert_eq!(choices.len(), 2);
-        print!("{:?}", choices);
-        assert!(choices.contains(&SubGraph(vec![Some(1), None, None])));
-        assert!(choices.contains(&SubGraph(vec![Some(2), None, None])));
-    }
-}

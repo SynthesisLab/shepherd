@@ -7,7 +7,7 @@ use crate::semigroup;
 use crate::sheep::Sheep;
 use crate::solution::Solution;
 use crate::strategy::Strategy;
-use log::debug;
+use log::{debug, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -23,9 +23,11 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
     let edges = nfa.get_edges();
     let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
     let mut result = true;
-
+    let mut step = 1;
     while result {
         //convert strategy to flows
+        info!("Step {} strategy\n{}", step, strategy);
+        step = step + 1;
         let action_flows = compute_action_flows(&strategy, &edges);
         debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
         let semigroup = semigroup::FlowSemigroup::compute(&action_flows);
@@ -34,7 +36,6 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         winning_ideal.insert(&final_ideal);
         winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
-        debug!("Strategy before restriction:\n{}", strategy);
         let changed = strategy.restrict_to(winning_ideal, &edges);
         debug!("Strategy after restriction:\n{}", strategy);
         if !changed {

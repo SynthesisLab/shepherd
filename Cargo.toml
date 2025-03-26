@@ -14,4 +14,5 @@ cached = "0.55.1"
 once_cell = "1.21.1"
 
 [profile.release]
-debug = true
+strip = true # Supprime les symboles de débogage
+lto = true   # Optimisation inter-procédurale (Link-Time Optimization)
