@@ -27,7 +27,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
     while result {
         //convert strategy to flows
         info!("Step {} strategy\n{}", step, strategy);
-        step = step + 1;
+        step += 1;
         let action_flows = compute_action_flows(&strategy, &edges);
         debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
         let semigroup = semigroup::FlowSemigroup::compute(&action_flows);
