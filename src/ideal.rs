@@ -1,4 +1,4 @@
-use crate::coef::{Coef, OMEGA};
+use crate::coef::{Coef, C0, OMEGA};
 use crate::memoizer::Memoizer;
 use crate::sheep::Sheep;
 use crate::{coef, partitions};
@@ -30,9 +30,10 @@ impl PartialEq for Ideal {
     }
 }
 
-static PRODUCT_CACHE: Lazy<
-    Mutex<Memoizer<Vec<Vec<Coef>>, Vec<Vec<Coef>>, fn(&Vec<Vec<Coef>>) -> Vec<Vec<Coef>>>>,
-> = Lazy::new(|| {
+type CoefsCollection = Vec<Vec<Coef>>;
+type CoefsCollectionMemoizer =
+    Memoizer<CoefsCollection, CoefsCollection, fn(&CoefsCollection) -> CoefsCollection>;
+static PRODUCT_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
         partitions::cartesian_product(possible_coefs)
     }))
@@ -179,7 +180,7 @@ impl Ideal {
                 self.0
                     .iter()
                     .map(|sheep| match sheep.get(j) {
-                        Coef::Omega => 1, //if we can really send omega, this will be managed by is_omega_possible
+                        Coef::Omega => edges.dim(), //if we can really send omega, this will be managed by is_omega_possible
                         Coef::Value(c) => c,
                     })
                     .max()
@@ -228,13 +229,14 @@ impl Ideal {
         debug!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
-        for candidate in PRODUCT_CACHE.lock().unwrap().get(possible_coefs) {
+        let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
+        for candidate in candidates {
             if self.is_safe(&candidate, edges) {
                 result.insert(&Sheep::from_vec(candidate));
             }
         }
         result.minimize();
-        println!("result {}\n", result);
+        debug!("result {}\n", result);
         result
     }
 
@@ -244,26 +246,6 @@ impl Ideal {
     /// - either putting some weight on a node with no successor
     /// - or taking the risk that the successor configuration is not in the ideal
     ///
-    /// # Examples
-    /// ```
-    /// use crate::ideal::Ideal;
-    /// use crate::coef::{C0, C1, C2, OMEGA};
-    /// let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
-    /// let ideal = Ideal::from_vecs(&[&[C0, C1, C0], &[C0, C0, C1]]);
-    /// let candidate = vec![C1, C0, C0];
-    /// assert!(ideal.is_safe(&candidate, &edges));
-    /// ```
-    ///
-    /// ```
-    /// use crate::ideal::Ideal;
-    /// use crate::coef::C0;
-    /// let c3 = Coef::Value(3);
-    /// let c4 = Coef::Value(4);
-    /// let edges = crate::graph::Graph::from_vec(vec![(0, 1), (0, 2)]);
-    /// let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C0, c3]]);
-    /// let candidate = vec![c4, C0, C0];
-    /// assert!(!ideal.is_safe(&candidate, &edges));
-    /// ```
     fn is_safe(&self, candidate: &[Coef], edges: &crate::graph::Graph) -> bool {
         let dim = candidate.len();
 
@@ -274,24 +256,10 @@ impl Ideal {
             return false;
         }
 
-        let choices = edges.get_maximal_deterministic_subgraphs();
-        //debug!("edges:\n{:?}\n", edges);
-        //debug!("choices:\n{:?}\n", choices);
-        choices.iter().all(|choice| {
-            //debug!("choice:\n{:?}\n", choice);
-            let image = (0..dim)
-                .map(|j: usize| {
-                    choice
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, &j0)| j0 == Some(j))
-                        .filter_map(|(i0, _)| candidate.get(i0))
-                        .sum()
-                })
-                .collect();
-            //debug!("image:\n{:?}\n", image);
-            self.contains(&Sheep::from_vec(image))
-        })
+        let image: Ideal = Self::get_image(candidate, edges);
+        debug!("image\n{}", &image);
+        let answer = image.sheeps().all(|x| self.contains(x));
+        answer
     }
 
     /// Remove from the ideal any element strictly smaller than another.
@@ -313,6 +281,48 @@ impl Ideal {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    fn get_image(dom: &[Coef], edges: &crate::graph::Graph) -> Ideal {
+        let mut ideal = Ideal::new();
+        let dim = dom.len();
+        let choices = (0..dom.len())
+            .map(|index| Self::get_choices(dim, dom[index], edges.get_successors(index)))
+            .collect::<Vec<_>>();
+        for im in partitions::cartesian_product(&choices)
+            .into_iter()
+            .map(|x| x.into_iter().sum::<Sheep>())
+            .collect::<Vec<_>>()
+        {
+            ideal.insert(&im);
+        }
+        ideal
+    }
+
+    fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
+        debug!("get_choices({}, {:?}, {:?})", dim, value, successors);
+        match value {
+            Coef::Value(0) => vec![Sheep::new(dim, C0)],
+            Coef::Omega => {
+                let mut base: Vec<Coef> = vec![C0; dim];
+                for succ in successors {
+                    base[succ] = OMEGA;
+                }
+                vec![Sheep::from_vec(base)]
+            }
+            Coef::Value(c) => {
+                let transports: Vec<Vec<u16>> = partitions::get_transports(c, successors.len());
+                let mut result: Vec<Sheep> = Vec::new();
+                for transport in transports {
+                    let mut vec = vec![C0; dim];
+                    for succ_index in 0..successors.len() {
+                        vec[successors[succ_index]] = Coef::Value(transport[succ_index]);
+                    }
+                    result.push(Sheep::from_vec(vec));
+                }
+                result
+            }
+        }
     }
 }
 
@@ -422,6 +432,22 @@ mod test {
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c4, C0], &[C0, C0, c4]]);
         let candidate = vec![c4, C0, C0];
+        assert!(!ideal.is_safe(&candidate, &edges));
+    }
+
+    #[test]
+    fn is_safe3() {
+        let c4 = Coef::Value(4);
+        let c3 = Coef::Value(3);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
+        let ideal = Ideal::from_vecs(&[
+            &[C0, c4, C0],
+            &[C0, c3, C1],
+            &[C0, C2, C2],
+            &[C0, C1, c3],
+            &[C0, C0, c4],
+        ]);
+        let candidate = vec![c4, C0, C0];
         assert!(ideal.is_safe(&candidate, &edges));
     }
 
@@ -513,6 +539,19 @@ mod test {
 
     #[test]
     fn pre_image5() {
+        /*preimage of
+               ( ω , ω , _ , ω , ω , _ )
+               ( ω , ω , ω , 0 , ω , _ )
+        by
+                (0, 0)
+                (1, 2)
+                (1, 3)
+                (3, 4)
+                (2, 5)
+                (4, 4)
+                (5, 5)
+        */
+
         let ideal0 = Ideal::from_vecs(&[
             &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
@@ -526,5 +565,43 @@ mod test {
             pre_image0,
             Ideal::from_vecs(&[&[OMEGA, C1, C0, OMEGA, OMEGA, C0]])
         );
+    }
+
+    #[test]
+    fn is_safe6() {
+        let c5 = Coef::Value(5);
+        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2), (0, 3)]);
+        let ideal = Ideal::from_vecs(&[
+            &[C0, OMEGA, OMEGA, C0, OMEGA],
+            &[C0, C0, OMEGA, OMEGA, OMEGA],
+            &[C0, OMEGA, C0, OMEGA, OMEGA],
+        ]);
+        let candidate = vec![c5, C0, C0, C0, C0];
+        assert!(!ideal.is_safe(&candidate, &edges));
+    }
+
+    #[test]
+    fn pre_image6() {
+        /*preimage of
+               ( _ , _ , _ , ω , _ )
+               ( _ , _ , ω , _ , ω )
+               ( _ , ω , _ , _ , ω )
+               ( _ , ω , ω , _ , _ )
+               ( ω , _ , _ , _ , _ )
+        by
+               (0, 1)
+               (0, 2)
+               (0, 4)
+        */
+        let ideal0 = Ideal::from_vecs(&[
+            &[C0, C0, C0, OMEGA, C0],
+            &[C0, C0, OMEGA, C0, OMEGA],
+            &[C0, OMEGA, C0, C0, OMEGA],
+            &[C0, OMEGA, OMEGA, C0, C0],
+            &[OMEGA, C0, C0, C0, C0],
+        ]);
+        let edges = crate::graph::Graph::from_vec(5, vec![(0, 1), (0, 2), (0, 4)]);
+        let pre_image0 = ideal0.safe_pre_image(&edges);
+        assert_eq!(pre_image0, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
 }

@@ -49,16 +49,18 @@ impl Strategy {
 
 impl fmt::Display for Strategy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let vec: Vec<String> = self
-            .0
+        let mut letters = self.0.keys().collect::<Vec<_>>();
+        letters.sort();
+        let vec: Vec<String> = letters
             .iter()
-            .map(|x| {
-                if x.1.is_empty() {
-                    format!("Never play action '{}'", x.0)
+            .map(|a| {
+                let ideal = self.0.get(*a).unwrap();
+                if ideal.is_empty() {
+                    format!("Never play action '{}'", a)
                 } else {
                     format!(
                         "Play action '{}' in the downward-closure of\n{}\n",
-                        x.0, x.1
+                        a, ideal
                     )
                 }
             })

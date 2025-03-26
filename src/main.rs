@@ -100,11 +100,12 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coef::{C0, C1, OMEGA};
+    use crate::coef::{C0, C1, C2, OMEGA};
     use crate::ideal::Ideal;
 
     const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
     const EXAMPLE1_COMPLETE: &str = include_str!("../examples/bottleneck-1-ab-complete.tikz");
+    const EXAMPLE2: &str = include_str!("../examples/bottleneck-2.tikz");
 
     #[test]
     fn test_example_1() {
@@ -159,5 +160,23 @@ mod tests {
 
         assert_eq!(*ideala, Ideal::from_vecs(&[&[C1, OMEGA, C0, OMEGA, C0]]));
         assert_eq!(*idealb, Ideal::from_vecs(&[&[C0, C0, OMEGA, OMEGA, C0]]));
+    }
+
+    #[test]
+    fn test_example_2() {
+        let nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
+        let solution = solver::solve(&nfa);
+        print!("{}", solution);
+        assert!(!solution.result);
+        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        let ideala = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "a")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+
+        assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
 }

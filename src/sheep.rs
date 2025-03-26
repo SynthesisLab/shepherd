@@ -1,6 +1,7 @@
 use crate::coef::{Coef, OMEGA};
 use std::cmp::min;
 use std::fmt;
+use std::iter::Sum;
 use std::vec::Vec;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -16,6 +17,24 @@ impl PartialOrd for Sheep {
             (false, true) => Some(std::cmp::Ordering::Greater),
             (false, false) => None,
         }
+    }
+}
+
+impl Sum for Sheep {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut iter = iter;
+        let mut result = iter.next().unwrap().clone();
+        for x in iter {
+            result = Sheep(
+                result
+                    .0
+                    .iter()
+                    .zip(x.0.iter())
+                    .map(|(x, y)| x + y)
+                    .collect(),
+            );
+        }
+        result
     }
 }
 
