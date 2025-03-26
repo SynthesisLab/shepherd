@@ -18,17 +18,26 @@ use log::LevelFilter;
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(short, long, help = "The path to the input file")]
+    /// The path to the input file
     filename: String,
 
     #[arg(
-        short,
-        long,
+        short='f',
+        long="from",
         value_enum,
         default_value = "tikz",
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
+
+    #[arg(
+        short='t',
+        long="to",
+        value_enum,
+        default_value = "tikz",
+        help = "The output format"
+    )]
+    output_format: nfa::InputFormat,
 
     #[arg(
         short,
