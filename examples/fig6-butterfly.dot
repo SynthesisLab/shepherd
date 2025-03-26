@@ -1,0 +1,92 @@
+// This is the butterfly NFA from figure 6
+// It is controllable
+// Strategy: play a until in the dw-closure of (w,1,0,0,w); then play b followed by c or d towards (w,0,0,0,w); repeat.
+
+digraph Butterfly {
+
+    // Define nodes with shapes and labels only
+
+    init [label="",shape=none,height=0,width=0];
+    win [label="W",shape=doublecircle];
+
+    subgraph cluster_left {
+        style=invis;  // do not draw a box around the subgraph
+        node [style=filled color=red];
+    L0 [label="l0" shape=box];
+    L1 [label="L" shape=box];
+    L2 [label="l2" shape=box];
+    L3 [label="l3" shape=box];
+    L41 [label="l41" shape=box];
+    L42 [label="l42" shape=box];
+
+    L0 -> L0 [label="r" color=darkgreen];
+    L0 -> L0 [label="r1" color=darkgreen];
+
+    L1 -> L0 [label="r" color=darkgreen];
+    L1 -> L2 [label="l" color=darkred];
+    L2 -> L2 [label="l" color=darkred];
+    L2 -> L2 [label="l1" color=darkred];
+    L2 -> L3 [label="l" color=darkred];
+    L3 -> L2 [label="l" color=darkred];
+
+    L3 -> L41 [label="l1" color=darkred];
+    L3 -> L42 [label="l1" color=darkred];
+    L41 -> L1 [label="l2" color=darkred];
+    L42 -> L1 [label="l3" color=darkred];
+
+
+    }
+
+    subgraph cluster_right {
+        style=invis;  // do not draw a box around the subgraph
+        //color=lightgreen;
+        node [style=filled color=green];
+
+
+    R0 [label="r0" shape=box];
+    R1 [label="R" shape=box];
+    R2 [label="r2" shape=box];
+    R3 [label="r3" shape=box];
+    R41 [label="r41" shape=box];
+    R42 [label="r42" shape=box];
+
+    R0 -> R0 [label="l" color=darkred];
+    R0 -> R0 [label="l1" color=darkred];
+
+    R1 -> R0 [label="l" color=darkred];
+    R1 -> R2 [label="r" color=darkgreen];
+    R2 -> R2 [label="r" color=darkgreen];
+    R2 -> R2 [label="r1" color=darkgreen];
+    R2 -> R3 [label="r" color=darkgreen];
+    R3 -> R2 [label="r" color=darkgreen];
+
+    R3 -> R41 [label="r1" color=darkgreen];
+    R3 -> R42 [label="r1" color=darkgreen];
+    R41 -> R1 [label="r2" color=darkgreen];
+    R42 -> R1 [label="r3" color=darkgreen];
+    }
+
+    L0 -> R1 [label="r2" color=darkgreen];
+    L0 -> R1 [label="r3" color=darkgreen];
+    R0 -> L1 [label="l2" color=darkred];
+    R0 -> L1 [label="l3" color=darkred];
+
+
+    // make states L and R initial
+    init -> L1;
+    init -> R1;
+
+    // lw wins from the left, toxic on the right
+    L1 -> win [label="wl"];
+    L2 -> win [label="wl"];
+    L3 -> win [label="wl"];
+    L41 -> win [label="wl"];
+    L42 -> win [label="wl"];
+
+    // rw wins from the right, toxic on the left
+    R1 -> win [label="rl"];
+    R2 -> win [label="rl"];
+    R3 -> win [label="rl"];
+    R41 -> win [label="rl"];
+    R42 -> win [label="rl"];
+}
