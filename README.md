@@ -19,17 +19,24 @@ This is solved by computing a semigroup called the symbolic flow semigroup (see 
 Install rust and cargo from https://www.rust-lang.org/tools/install
 
 In the root folder launch
+
 ```cargo run -- -f examples/example1.tikz```
 
 That will load an automaton from the file ```examples/example1.tikz```,
-compute the maximal winning strategy for the random population control problem
-and display the details in the terminal.
+compute the maximal winning strategy for the random population control problem,
+displays the answer in the terminal, and produces tex and pdf reports `example1.tikz.tex` and `example1.tikz.pdf`.
 
-The file ```examples.pdf```at the root give details about examples.
+For dot files 
 
-## Input
+```cargo run -- -i dot -f examples/bottleneck-1-ab.dot```
 
-### Tikz files (produced by finsm.io)
+Check the file ```examples.pdf``` at the root  which gives an overview of all available examples.
+
+## In
+
+Two kind of input files can be processed by `shepherd`.
+
+### Tikz files (as produced by finsm.io)
 
 - Create an automaton using https://finsm.io
 - Copy paste the export (in Tikz format) in some local file and give it as input to shepherd, using the `-f` option.
@@ -50,18 +57,26 @@ The input graphs are interpret as NFA using the following convention.
 
 See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the simple bottleneck in `examples/bottleneck-1-ab.tikz`.
 
-## Output
+## Out
 
-By default, a tex file and a pdf file are generated, assuming `pdflatex`is installed on the machine.
-The output is formatted using the template `latex/solution.template.tex`.
-The tex conversion and pdf compilations can be optionally disabled, and the tex processor can also be modified,
-run `cargo run -- -help` for more details.
+Each computation produces two outpurs: a tex file and a pdf file.
+The `tex` output is formatted using the template `latex/solution.template.tex`.
+The `pdf`output is generated using `pdflatex`.
 
-The states of the NFA can be reordered in order to make the generated reports more readable.
+The states of the NFA can be automatically reordered in order to make the generated reports more readable.
 Either topologically
 ```cargo run -- -s topological -i dot -f examples/bottleneck-2-staged.dot```
 or alphabetically
 ```cargo run -- -s alphabetical -i dot -f examples/bottleneck-2-staged.dot```
+
+The tex conversion and pdf compilations can be (optionally) turned off.
+Also the tex processor can also be modified.
+Run 
+
+```cargo run -- -help```
+
+for all details.
+
 
 
 
