@@ -118,6 +118,7 @@ impl Ideal {
     /// Unsafe is:
     /// - either putting some weight on a node with no successor
     /// - or taking the risk that the successor configuration is not in the ideal
+    ///
     /// The method is used in the solver to compute the set of configurations from which it is safe to play an action.
     /// The method returns the set of configurations which are safe to play.
     ///
@@ -191,7 +192,7 @@ impl Ideal {
             .collect::<Vec<_>>();
 
         //print max_finite_coords and is_omega_possible
-        print!("preimage of\n{}\n by\n{}\n", self, edges);
+        debug!("preimage of\n{}\n by\n{}\n", self, edges);
 
         let possible_coefs = (0..dim)
             .map(|i| {
@@ -213,15 +214,13 @@ impl Ideal {
                 }
             })
             .collect::<Vec<_>>();
-        print!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        print!("is_omega_possible: {:?}\n", is_omega_possible);
-        print!("possible_coefs: {:?}\n", possible_coefs);
+        debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        debug!("is_omega_possible: {:?}\n", is_omega_possible);
+        debug!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
         for candidate in partitions::cartesian_product(&possible_coefs) {
-            //debug!("candidate: {:?}\n", candidate);
             if self.is_safe(&candidate, edges) {
-                //debug!("\t...ok\n");
                 result.insert(&Sheep::from_vec(candidate));
             }
         }
