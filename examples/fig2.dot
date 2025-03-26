@@ -1,0 +1,39 @@
+// This is the NFA from figure 2
+// It is controllable
+// Strategy: play a until in the dw-closure of (w,1,0,0,w); then play b followed by c or d towards (w,0,0,0,w); repeat.
+
+digraph fig2 {
+    rankdir=LR;
+    node[shape="circle"]
+    
+    // nodes
+    s1 [label="s1"];
+    s2 [label="s2"];
+    s3 [label="s3"];
+    s4 [label="s4"];
+    s5 [label="s5", shape=doublecircle];
+
+    // make state 1 initial
+    init [label="",shape=none,height=0,width=0];
+    init -> s1;
+
+    // edges
+    s1 -> s1 [label="a"];
+    s1 -> s1 [label="b"];
+    s1 -> s1 [label="c"];
+    s1 -> s1 [label="d"];
+
+    s1 -> s2 [label="a"];
+    s2 -> s1 [label="a"];
+    s2 -> s2 [label="a"];
+    s2 -> s3 [label="b"];
+    s2 -> s4 [label="b"];
+
+    s3 -> s5 [label="c"];
+    s4 -> s5 [label="d"];
+
+    s5 -> s5 [label="a"];
+    s5 -> s5 [label="b"];
+    s5 -> s5 [label="c"];
+    s5 -> s5 [label="d"];
+}
