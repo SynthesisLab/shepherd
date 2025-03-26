@@ -204,8 +204,7 @@ impl Ideal {
             })
             .collect::<Vec<_>>();
 
-        //print max_finite_coords and is_omega_possible
-        debug!("preimage of\n{}\n by\n{}\n", self, edges);
+        //println!("preimage of\n{}\n by\n{}\n", self, edges);
 
         let possible_coefs = (0..dim)
             .map(|i| {
@@ -220,9 +219,9 @@ impl Ideal {
                 }
             })
             .collect::<Vec<_>>();
-        debug!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        debug!("is_omega_possible: {:?}\n", is_omega_possible);
-        debug!("possible_coefs: {:?}\n", possible_coefs);
+        //println!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        //println!("is_omega_possible: {:?}\n", is_omega_possible);
+        //println!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
         let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
@@ -230,7 +229,7 @@ impl Ideal {
             self.safe_pre_image_from(&candidate, edges, &mut result);
         }
         result.minimize();
-        debug!("result {}\n", result);
+        //println!("result {}\n", result);
         result
     }
 
@@ -241,19 +240,22 @@ impl Ideal {
         ideal: &mut Ideal,
     ) {
         if ideal.contains(candidate) {
+            //println!("{} already in ideal", candidate);
             return;
         }
         if self.is_safe(candidate, edges) {
+            //println!("{} inserted", candidate);
             ideal.insert(candidate);
             return;
         }
-        let mut candidate = candidate.clone();
+        //println!("{} refined", candidate);
         for i in 0..candidate.len() {
             let ci = candidate.get(i);
             if ci == C0 || ci == OMEGA {
                 continue;
             }
             if let Coef::Value(c) = ci {
+                let mut candidate = candidate.clone();
                 let mut c = c - 1;
                 loop {
                     if c <= 2 {
