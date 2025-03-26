@@ -226,10 +226,10 @@ impl Ideal {
 
         let mut result = Ideal::new();
         let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
+        println!("{} candidates", candidates.len());
         for candidate in candidates {
-            if !result.contains(&candidate) {
-                self.safe_pre_image_from(&candidate, edges, &mut result);
-            }
+            println!("candidate {}", candidate);
+            self.safe_pre_image_from(&candidate, edges, &mut result);
         }
         result.minimize();
         print!("result {}\n", result);
@@ -242,38 +242,38 @@ impl Ideal {
         edges: &crate::graph::Graph,
         ideal: &mut Ideal,
     ) {
-        //println!("{:?}\n", candidate);
-        if self.is_safe(candidate, edges) {
+        println!("{:?}\n", candidate);
+        if ideal.contains(&candidate) {
+            println!("already in");
+            return;
+        }
+        if self.is_safe(&candidate, edges) {
+            println!("new safe");
             ideal.insert(candidate);
-        } else {
-            for i in 0..candidate.len() {
-                match candidate.get(i) {
-                    C0 => {
-                        continue;
-                    }
-                    Coef::Value(c) => {
-                        let mut new_candidate = candidate.clone();
-
-                        let mut c = c - 1;
-                        loop {
-                            if c <= 2 {
-                                new_candidate.set(i, Coef::Value(c));
-                                self.safe_pre_image_from(&new_candidate, edges, ideal);
-                                break;
-                            } else {
-                                new_candidate.set(i, Coef::Value(c / 2));
-                                if !self.is_safe(&new_candidate, edges) {
-                                    c = c / 2;
-                                } else {
-                                    new_candidate.set(i, Coef::Value(c));
-                                    self.safe_pre_image_from(&new_candidate, edges, ideal);
-                                    break;
-                                }
-                            }
+            return;
+        }
+        let mut candidate = candidate.clone();
+        for i in 0..candidate.len() {
+            let ci = candidate.get(i);
+            if ci == C0 || ci == OMEGA {
+                continue;
+            }
+            if let Coef::Value(c) = ci {
+                let mut c = c - 1;
+                loop {
+                    if c <= 2 {
+                        candidate.set(i, Coef::Value(c));
+                        self.safe_pre_image_from(&candidate, edges, ideal);
+                        break;
+                    } else {
+                        candidate.set(i, Coef::Value(c / 2));
+                        if !self.is_safe(&candidate, edges) {
+                            c = c / 2;
+                        } else {
+                            candidate.set(i, Coef::Value(c));
+                            self.safe_pre_image_from(&candidate, edges, ideal);
+                            break;
                         }
-                    }
-                    OMEGA => {
-                        continue;
                     }
                 }
             }
