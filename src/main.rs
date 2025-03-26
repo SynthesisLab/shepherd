@@ -19,8 +19,25 @@ struct Args {
     #[arg(short, long, help = "The path to the input file")]
     filename: String,
 
-    #[arg(short, long, default_value = "tikz", help = "The input format")]
-    input_type: String,
+    #[arg(
+        short,
+        long,
+        value_enum,
+        default_value = "tikz",
+        help = "The input format"
+    )]
+    input_format: nfa::InputFormat,
+
+    #[arg(
+        short,
+        long,
+        value_enum,
+        default_value = "input",
+        help = format!("The state reordering type.\n'{:?}' preserves input order.\n\
+        '{:?}' sorts by label.\n\
+        '{:?}' sorts states topologically.\n", nfa::StateOrdering::Input, nfa::StateOrdering::Alphabetical, nfa::StateOrdering::Topological)
+    )]
+    state_ordering: nfa::StateOrdering,
 
     //adds an explanation to the help message
     #[arg(long, action, help = "Do not generate tex output")]
@@ -38,7 +55,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_type);
+    let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
     let solution = solver::solve(&nfa);
 
@@ -49,7 +66,7 @@ fn main() {
         let filename = args.filename.split('/').last().unwrap();
         let output_path_tex = format!("{}.solution.tex", filename);
         let output_path_pdf = format!("{}.solution.pdf", filename);
-        let is_tikz = args.input_type == "tikz";
+        let is_tikz = args.input_format == nfa::InputFormat::Tikz;
         solution.generate_latex(
             &output_path_tex,
             if is_tikz { Some(&args.filename) } else { None },

@@ -1,8 +1,8 @@
 /*
 authors @GBathie + @Numero7
  */
-
 use crate::graph::Graph;
+use clap::ValueEnum;
 use dot_parser::*;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -26,6 +26,19 @@ pub struct Nfa {
     initial: HashSet<State>,
     accepting: HashSet<State>,
     transitions: Vec<Transition>,
+}
+
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum InputFormat {
+    Dot,
+    Tikz,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum StateOrdering {
+    Input,
+    Alphabetical,
+    Topological,
 }
 
 impl Nfa {
@@ -339,22 +352,94 @@ impl Nfa {
         Ok(content)
     }
 
-    pub(crate) fn load_from_file(path: &str, input_type: &str) -> Self {
-        match Self::read_file(path) {
+    pub(crate) fn load_from_file(
+        path: &str,
+        input_type: &InputFormat,
+        state_ordering: &StateOrdering,
+    ) -> Self {
+        let mut nfa = match Self::read_file(path) {
             Ok(content) => match input_type {
-                "tikz" => Self::from_tikz(&content),
-                "dot" => Self::from_dot(&content),
-                _ => {
-                    panic!(
-                        "Invalid format: '{}', known format {{ tikz, dot }}.",
-                        input_type
-                    );
-                }
+                InputFormat::Tikz => Self::from_tikz(&content),
+                InputFormat::Dot => Self::from_dot(&content),
             },
             Err(e) => {
                 panic!("Error reading file '{}': '{}'", &path, e);
             }
+        };
+        nfa.reorder_states(state_ordering);
+        nfa
+    }
+
+    fn reorder_states(&mut self, state_ordering: &StateOrdering) {
+        match state_ordering {
+            StateOrdering::Input => {}
+            StateOrdering::Alphabetical => {
+                self.states.sort();
+            }
+            StateOrdering::Topological => {
+                self.sort_states_topologically();
+            }
         }
+    }
+
+    fn apply_reordering(&mut self, new_order: &[usize]) {
+        //blue monday
+        println!("before reordering {}", self);
+        let old_to_new: Vec<_> = new_order
+            .iter()
+            .map(|&i| new_order.iter().position(|&x| new_order[x] == i).unwrap())
+            .collect();
+        self.states = new_order.iter().map(|&i| self.states[i].clone()).collect();
+        self.transitions.iter_mut().for_each(|t| {
+            t.from = old_to_new[t.from];
+            t.to = old_to_new[t.to];
+        });
+        self.initial = self.initial.iter().map(|i| old_to_new[*i]).collect();
+        self.accepting = self.accepting.iter().map(|i| old_to_new[*i]).collect();
+        println!("after reordering {}", self);
+        //panic!();
+    }
+
+    fn sort_states_topologically(&mut self) {
+        //we want to sort states topologically
+        let mut successor_relation = HashMap::new();
+        for state in (0..self.nb_states()).collect::<Vec<_>>() {
+            //create aset at index state with state as its only element
+            successor_relation
+                .entry(state)
+                .or_insert_with(HashSet::new)
+                .insert(state);
+        }
+        loop {
+            let mut changed = false;
+            for t in self.transitions.iter() {
+                for successors in successor_relation.values_mut() {
+                    if successors.contains(&t.from) {
+                        changed |= successors.insert(t.to);
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        //reorder the vector state, first according to successor relation of its indices
+        //and then according to alphabetical order
+        let mut states_indices = (0..self.nb_states()).collect::<Vec<_>>();
+        states_indices.sort_by(|&a, &b| {
+            let succa = successor_relation.get(&a).unwrap();
+            let succb = successor_relation.get(&b).unwrap();
+            if succa.contains(&b) && succb.contains(&a) {
+                std::cmp::Ordering::Equal
+            } else if succa.contains(&b) {
+                std::cmp::Ordering::Less
+            } else if succb.contains(&a) {
+                std::cmp::Ordering::Greater
+            } else {
+                self.states[a].cmp(&self.states[b])
+            }
+        });
+        self.apply_reordering(&states_indices);
     }
 }
 
