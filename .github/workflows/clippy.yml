@@ -23,10 +23,10 @@ jobs:
 
       - name: Run Clippy
         run: |
-	  set -x
+          set -x
           cargo clippy -- -D warnings
 
       - name: Run Tests
         run: |
-	  set -x
-	  cargo test --all-features --verbose
+          set -x
+          cargo test --all-features --verbose
