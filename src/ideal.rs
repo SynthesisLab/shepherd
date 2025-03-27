@@ -378,7 +378,21 @@ impl Ideal {
         }
         ideal
     }
-    
+
+    pub(crate) fn round_down(&mut self, upper_bound: u16, dim: usize) {
+        let to_remove: Vec<Sheep> = self
+            .0
+            .iter()
+            .filter(|s| s.some_finite_coordinate_is_larger_than(upper_bound))
+            .cloned()
+            .collect();
+        for mut sheep in to_remove {
+            self.0.remove(&sheep);
+            sheep.round_down(upper_bound, dim);
+            self.0.insert(sheep);
+        }
+    }
+
     // create a CSV representation of this ideal
     pub fn as_csv(&self) -> Vec<String> {
         let mut lines: Vec<String> = Vec::new();
