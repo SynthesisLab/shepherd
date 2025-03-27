@@ -456,7 +456,7 @@ mod test {
         );
         assert_eq!(
             flow.pre_image(&[2, 3]),
-            Sheep::from_vec(vec![C0, C2, OMEGA, OMEGA])
+            Sheep::from_vec(vec![C0, C3, OMEGA, OMEGA])
         );
         assert_eq!(
             flow.pre_image(&[1, 2]),
