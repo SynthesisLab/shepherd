@@ -2,11 +2,14 @@ use crate::coef::{Coef, C0, OMEGA};
 use crate::memoizer::Memoizer;
 use crate::sheep::Sheep;
 use crate::{coef, partitions};
+use cached::proc_macro::cached;
 use log::debug;
 use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use std::fmt;
 use std::sync::Mutex;
 use std::{collections::HashSet, vec::Vec};
+
 /*
 An ideal is mathmatically a downward closed set of vectors in N^S.
 It is represented as a set of sheep, all have the same dimension,
@@ -33,12 +36,11 @@ impl PartialEq for Ideal {
 type CoefsCollection = Vec<Vec<Coef>>;
 type Herd = Vec<Sheep>;
 type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollection) -> Herd>;
-static PRODUCT_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
+static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
         let downward_closure = possible_coefs
             .iter()
             .map(|v| {
-                let is_omega = v.contains(&OMEGA);
                 let coef = v
                     .iter()
                     .filter_map(|&x| match x {
@@ -46,7 +48,7 @@ static PRODUCT_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
                         Coef::Value(c) => Some(c),
                     })
                     .next();
-
+                let is_omega = v.contains(&OMEGA);
                 match (is_omega, coef) {
                     (false, None) => vec![C0],
                     (true, None) => vec![OMEGA],
@@ -213,13 +215,14 @@ impl Ideal {
             })
             .collect::<Vec<_>>();
 
+        let dim16 = dim as u16;
         let max_finite_coordsi = (0..dim)
             .map(|i| {
                 {
                     edges
                         .get_successors(i)
                         .iter()
-                        .map(|&j| max_finite_coordsj[j])
+                        .map(|&j| std::cmp::min(dim16, max_finite_coordsj[j]))
                         .max()
                         .unwrap_or(0)
                 }
@@ -246,13 +249,15 @@ impl Ideal {
         //println!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = Ideal::new();
-        let candidates = PRODUCT_CACHE.lock().unwrap().get(possible_coefs);
-        for candidate in candidates {
-            if !result.contains(&candidate) && self.is_safe(&candidate, edges) {
-                result.insert(&candidate);
-            }
-            //self.safe_pre_image_from(&candidate, edges, &mut result);
-        }
+        let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
+        candidates
+            .par_iter()
+            .filter(|&candidate| self.is_safe(candidate, edges))
+            .collect::<HashSet<_>>()
+            .iter()
+            .for_each(|c| {
+                result.insert(c);
+            });
         result.minimize();
         //println!("result {}\n", result);
         result
@@ -313,7 +318,7 @@ impl Ideal {
     /// - or taking the risk that the successor configuration is not in the ideal
     ///
     fn is_safe(&self, candidate: &Sheep, edges: &crate::graph::Graph) -> bool {
-        let dim = candidate.len();
+        let dim = edges.dim() as usize;
 
         //if we lose some sheep, forget about it
         let lose_sheep = (0..dim)
@@ -322,8 +327,8 @@ impl Ideal {
             return false;
         }
 
-        let image: Ideal = Self::get_image(candidate, edges);
-        debug!("image\n{}", &image);
+        let image: Ideal = Self::get_image_rounded_up(dim, candidate, edges);
+        //debug!("image\n{}", &image);
         let answer = image.sheeps().all(|x| self.contains(x));
         answer
     }
@@ -349,11 +354,10 @@ impl Ideal {
         self.0.is_empty()
     }
 
-    fn get_image(dom: &Sheep, edges: &crate::graph::Graph) -> Ideal {
+    fn get_image_rounded_up(dim: usize, dom: &Sheep, edges: &crate::graph::Graph) -> Ideal {
         let mut ideal = Ideal::new();
-        let dim = dom.len();
         let choices = (0..dom.len())
-            .map(|index| Self::get_choices(dim, dom.get(index), edges.get_successors(index)))
+            .map(|index| get_choices(dim, dom.get(index), edges.get_successors(index)))
             .collect::<Vec<_>>();
         for im in partitions::cartesian_product(&choices)
             .into_iter()
@@ -364,32 +368,33 @@ impl Ideal {
         }
         ideal
     }
+}
 
-    fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
-        #[cfg(debug_assertions)]
-        debug!("get_choices({}, {:?}, {:?})", dim, value, successors);
-        match value {
-            Coef::Value(0) => vec![Sheep::new(dim, C0)],
-            Coef::Omega => {
-                let mut base: Vec<Coef> = vec![C0; dim];
-                for succ in successors {
-                    base[succ] = OMEGA;
-                }
-                vec![Sheep::from_vec(base)]
-            }
-            Coef::Value(c) => {
-                let transports: Vec<Vec<u16>> = partitions::get_transports(c, successors.len());
-                let mut result: Vec<Sheep> = Vec::new();
-                for transport in transports {
-                    let mut vec = vec![C0; dim];
-                    for succ_index in 0..successors.len() {
-                        vec[successors[succ_index]] = Coef::Value(transport[succ_index]);
-                    }
-                    result.push(Sheep::from_vec(vec));
-                }
-                result
-            }
+#[cached]
+fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
+    debug!("get_choices({}, {:?}, {:?})", dim, value, successors);
+    //assert!(value == OMEGA || value <= Coef::Value(dim as u16));
+    if value == C0 {
+        vec![Sheep::new(dim, C0)]
+    } else if value > Coef::Value(dim as u16) {
+        let mut base: Vec<Coef> = vec![C0; dim];
+        for succ in successors {
+            base[succ] = OMEGA;
         }
+        vec![Sheep::from_vec(base)]
+    } else if let Coef::Value(c) = value {
+        let transports: Vec<Vec<u16>> = partitions::get_transports(c, successors.len());
+        let mut result: Vec<Sheep> = Vec::new();
+        for transport in transports {
+            let mut vec = vec![C0; dim];
+            for succ_index in 0..successors.len() {
+                vec[successors[succ_index]] = Coef::Value(transport[succ_index]);
+            }
+            result.push(Sheep::from_vec(vec));
+        }
+        result
+    } else {
+        panic!("logically inconsistent case");
     }
 }
 

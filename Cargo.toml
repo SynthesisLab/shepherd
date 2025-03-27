@@ -12,6 +12,7 @@ tera = "1.19"
 dot-parser = "0.3.3"
 cached = "0.55.1"
 once_cell = "1.21.1"
+rayon = "1.10.0"
 
 [profile.release]
 strip = true # Supprime les symboles de débogage

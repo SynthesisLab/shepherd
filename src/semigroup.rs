@@ -2,6 +2,7 @@ use crate::flow;
 use crate::ideal;
 use crate::nfa;
 use log::debug;
+use rayon::prelude::*;
 use std::collections::HashSet; // for distinct method
 use std::collections::VecDeque;
 use std::fmt;
@@ -65,8 +66,8 @@ impl FlowSemigroup {
                 //debug!("\n\nSkipped iteration\n{}", iteration);
             }
             {
-                let right_products = self.flows.iter().map(|other| &flow * other);
-                let left_products = self.flows.iter().map(|other| other * &flow);
+                let right_products = self.flows.par_iter().map(|other| &flow * other);
+                let left_products = self.flows.par_iter().map(|other| other * &flow);
                 let products: HashSet<flow::Flow> = left_products.chain(right_products).collect();
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
