@@ -7,32 +7,32 @@ digraph Butterfly {
     // Define nodes with shapes and labels only
 
     init [label="",shape=none,height=0,width=0];
-    win [label="W",shape=doublecircle];
+    win [label="W", shape=doublecircle fontcolor=springgreen2 color=springgreen2];
 
     subgraph cluster_left {
         style=invis;  // do not draw a box around the subgraph
-        node [style=filled color=red];
-    L0 [label="l0" shape=box];
-    L1 [label="L" shape=box];
-    L2 [label="l2" shape=box];
-    L3 [label="l3" shape=box];
-    L41 [label="l41" shape=box];
-    L42 [label="l42" shape=box];
+    node [style=filled color=orangered2];
+    L [label="L" shape=box];
+    L1 [label="L1" shape=box];
+    L2 [label="L2" shape=box];
+    L3 [label="L3" shape=box];
+    L41 [label="L41" shape=box];
+    L42 [label="L42" shape=box];
+    
+    L1 -> L1 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
+    L1 -> L1 [label="r1" color=cornflowerblue fontcolor=cornflowerblue];
 
-    L0 -> L0 [label="r" color=darkgreen];
-    L0 -> L0 [label="r1" color=darkgreen];
+    L -> L1 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
+    L -> L2 [label="l" color=orangered2 fontcolor=orangered2];
+    L2 -> L2 [label="l" color=orangered2 fontcolor=orangered2];
+    L2 -> L2 [label="l1" color=orangered2 fontcolor=orangered2];
+    L2 -> L3 [label="l" color=orangered2 fontcolor=orangered2];
+    L3 -> L2 [label="l" color=orangered2 fontcolor=orangered2];
 
-    L1 -> L0 [label="r" color=darkgreen];
-    L1 -> L2 [label="l" color=darkred];
-    L2 -> L2 [label="l" color=darkred];
-    L2 -> L2 [label="l1" color=darkred];
-    L2 -> L3 [label="l" color=darkred];
-    L3 -> L2 [label="l" color=darkred];
-
-    L3 -> L41 [label="l1" color=darkred];
-    L3 -> L42 [label="l1" color=darkred];
-    L41 -> L1 [label="l2" color=darkred];
-    L42 -> L1 [label="l3" color=darkred];
+    L3 -> L41 [label="l1" color=orangered2 fontcolor=orangered2];
+    L3 -> L42 [label="l1" color=orangered2 fontcolor=orangered2];
+    L41 -> L [label="l2" color=orangered2 fontcolor=orangered2];
+    L42 -> L [label="l3" color=orangered2 fontcolor=orangered2];
 
 
     }
@@ -40,53 +40,43 @@ digraph Butterfly {
     subgraph cluster_right {
         style=invis;  // do not draw a box around the subgraph
         //color=lightgreen;
-        node [style=filled color=green];
+        node [style=filled color=cornflowerblue];
 
+        R [label="R" shape=box];
+        R1 [label="R1" shape=box];
+        R2 [label="R2" shape=box];
+        R3 [label="R3" shape=box];
+        R41 [label="R41" shape=box];
+        R42 [label="R42" shape=box];
 
-    R0 [label="r0" shape=box];
-    R1 [label="R" shape=box];
-    R2 [label="r2" shape=box];
-    R3 [label="r3" shape=box];
-    R41 [label="r41" shape=box];
-    R42 [label="r42" shape=box];
+        R1 -> R1 [label="l" color=orangered2 fontcolor=orangered2];
+        R1 -> R1 [label="l1" color=orangered2 fontcolor=orangered2];
 
-    R0 -> R0 [label="l" color=darkred];
-    R0 -> R0 [label="l1" color=darkred];
+        R -> R1 [label="l" color=orangered2 fontcolor=orangered2];
+        R -> R2 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
+        R2 -> R2 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
+        R2 -> R2 [label="r1" color=cornflowerblue fontcolor=cornflowerblue];
+        R2 -> R3 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
+        R3 -> R2 [label="r" color=cornflowerblue fontcolor=cornflowerblue];
 
-    R1 -> R0 [label="l" color=darkred];
-    R1 -> R2 [label="r" color=darkgreen];
-    R2 -> R2 [label="r" color=darkgreen];
-    R2 -> R2 [label="r1" color=darkgreen];
-    R2 -> R3 [label="r" color=darkgreen];
-    R3 -> R2 [label="r" color=darkgreen];
-
-    R3 -> R41 [label="r1" color=darkgreen];
-    R3 -> R42 [label="r1" color=darkgreen];
-    R41 -> R1 [label="r2" color=darkgreen];
-    R42 -> R1 [label="r3" color=darkgreen];
+        R3 -> R41 [label="r1" color=cornflowerblue fontcolor=cornflowerblue];
+        R3 -> R42 [label="r1" color=cornflowerblue fontcolor=cornflowerblue];
+        R41 -> R [label="r2" color=cornflowerblue fontcolor=cornflowerblue];
+        R42 -> R [label="r3" color=cornflowerblue fontcolor=cornflowerblue];
     }
-
-    L0 -> R1 [label="r2" color=darkgreen];
-    L0 -> R1 [label="r3" color=darkgreen];
-    R0 -> L1 [label="l2" color=darkred];
-    R0 -> L1 [label="l3" color=darkred];
+    
+    L1 -> R [label="r2" color=cornflowerblue fontcolor=cornflowerblue];
+    L1 -> R [label="r3" color=cornflowerblue fontcolor=cornflowerblue];
+    R1 -> L [label="l2" color=orangered2 fontcolor=orangered2];
+    R1 -> L [label="l3" color=orangered2 fontcolor=orangered2];
 
 
     // make states L and R initial
-    init -> L1;
-    init -> R1;
+    init -> L;
+    init -> R;
 
     // lw wins from the left, toxic on the right
-    L1 -> win [label="wl"];
-    L2 -> win [label="wl"];
-    L3 -> win [label="wl"];
-    L41 -> win [label="wl"];
-    L42 -> win [label="wl"];
-
+    L -> win [label="wl" color=springgreen2 fontcolor=springgreen2];
     // rw wins from the right, toxic on the left
-    R1 -> win [label="rl"];
-    R2 -> win [label="rl"];
-    R3 -> win [label="rl"];
-    R41 -> win [label="rl"];
-    R42 -> win [label="rl"];
+    R -> win [label="wr" color=springgreen2 fontcolor=springgreen2];
 }
