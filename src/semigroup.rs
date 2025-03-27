@@ -183,4 +183,27 @@ mod tests {
         let expected = &Sheep::from_vec(vec![Coef::Value(2), C0, C0]);
         assert!(path_problem_solution.contains(expected));
     }
+
+    #[test]
+    fn test_path_problem2() {
+        let flow1 = Flow::from_lines(&[
+            &[C0, C1, C1, C0],
+            &[C0, C0, C0, C0],
+            &[C0, C0, C0, C0],
+            &[C0, C0, C0, C0],
+        ]);
+        let flow2 = Flow::from_lines(&[
+            &[C0, C0, C0, C0],
+            &[C0, C0, C0, C1],
+            &[C0, C0, C0, C1],
+            &[C0, C0, C0, C0],
+        ]);
+        let flows: HashSet<Flow> = [flow1, flow2].into();
+        let semigroup = FlowSemigroup::compute(&flows);
+        println!("semigroup\n\n{}", semigroup);
+        let path_problem_solution = semigroup.get_path_problem_solution(&[3]);
+        println!("path_problem_solution\n{}", path_problem_solution);
+        let expected = &Sheep::from_vec(vec![Coef::Value(2), C0, C0, C0]);
+        assert!(path_problem_solution.contains(expected));
+    }
 }
