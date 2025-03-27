@@ -83,7 +83,7 @@ fn compute_action_flows(
 fn flows_to_string(flows: &HashSet<flow::Flow>) -> String {
     let mut vec: Vec<String> = flows.iter().map(|x| x.to_string()).collect();
     vec.sort();
-    vec.join("\r\n")
+    vec.join("\n")
 }
 
 #[cfg(test)]

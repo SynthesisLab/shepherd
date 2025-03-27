@@ -136,8 +136,9 @@ impl fmt::Display for FlowSemigroup {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coef::{C0, C1, OMEGA};
+    use crate::coef::{Coef, C0, C1, OMEGA};
     use crate::flow::Flow;
+    use crate::sheep::Sheep;
 
     #[test]
     fn test_flow_semigroup_compute1() {
@@ -169,5 +170,17 @@ mod tests {
         print!("\nsemigroup\n\n{}", semigroup);
         assert!(semigroup.contains(&flowa));
         assert!(semigroup.contains(&flowb));
+    }
+
+    #[test]
+    fn test_path_problem() {
+        let flow = Flow::from_lines(&[&[C0, C1, C1], &[C0, C0, C0], &[C0, C0, C0]]);
+        let flows: HashSet<Flow> = [flow].into();
+        let semigroup = FlowSemigroup::compute(&flows);
+        println!("semigroup\n\n{}", semigroup);
+        let path_problem_solution = semigroup.get_path_problem_solution(&[1, 2]);
+        println!("path_problem_solution\n{}", path_problem_solution);
+        let expected = &Sheep::from_vec(vec![Coef::Value(2), C0, C0]);
+        assert!(path_problem_solution.contains(expected));
     }
 }
