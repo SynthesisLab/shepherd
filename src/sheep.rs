@@ -93,12 +93,12 @@ impl Sheep {
     }
 
     pub(crate) fn round_up(&mut self, max_finite_value: u16) -> Sheep {
-        return Sheep(
+        Sheep(
             self.0
                 .iter()
                 .map(|x| x.round_up(max_finite_value))
                 .collect(),
-        );
+        )
     }
 }
 

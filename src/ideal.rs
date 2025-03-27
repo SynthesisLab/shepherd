@@ -317,7 +317,8 @@ impl Ideal {
     /// Unsafe is:
     /// - either putting some weight on a node with no successor
     /// - or taking the risk that the successor configuration is not in the ideal.
-    /// any constant larger than the dimension appearing in a successor configuration
+    ///
+    /// There is a roundup operation: any constant larger than the dimension appearing in a successor configuration
     /// is considered as omega.
     ///
     fn is_safe_with_roundup(&self, candidate: &Sheep, edges: &crate::graph::Graph) -> bool {
@@ -331,7 +332,7 @@ impl Ideal {
             return false;
         }
 
-        let image: Ideal = Self::get_image(dim as usize, candidate, edges, max_finite_value);
+        let image: Ideal = Self::get_image(dim, candidate, edges, max_finite_value);
         //println!("image\n{}", &image);
         let answer = image.sheeps().all(|x| self.contains(x));
         answer
