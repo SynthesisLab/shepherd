@@ -148,10 +148,12 @@ mod tests {
     use super::*;
     use crate::coef::{C0, C1, C2, OMEGA};
     use crate::ideal::Ideal;
+    use crate::sheep::Sheep;
 
     const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
     const EXAMPLE1_COMPLETE: &str = include_str!("../examples/bottleneck-1-ab-complete.tikz");
     const EXAMPLE2: &str = include_str!("../examples/bottleneck-2.tikz");
+    const EXAMPLE_BUG12: &str = include_str!("../examples/bug12.tikz");
 
     #[test]
     fn test_example_1() {
@@ -260,5 +262,23 @@ mod tests {
             .unwrap();
 
         assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
+    }
+
+    #[test]
+    fn test_bug12() {
+        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE_BUG12);
+        nfa.sort(&nfa::StateOrdering::Topological);
+        let solution = solver::solve(&nfa);
+        assert!(!solution.result);
+        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        let idealb = solution
+            .maximal_winning_strategy
+            .iter()
+            .filter(|x| x.0 == "a")
+            .map(|x| x.1)
+            .next()
+            .unwrap();
+
+        assert!(idealb.contains(&Sheep::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
     }
 }
