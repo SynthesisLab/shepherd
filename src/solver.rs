@@ -41,7 +41,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         winning_ideal.insert(&final_ideal);
         //non-omega stay below dim
         let dim16: u16 = dim.try_into().unwrap();
-        winning_ideal.round_down(dim16, dim);
+        winning_ideal.round_down(dim16, dim); //backed by the small constants theorem
         winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
         let changed = strategy.restrict_to(winning_ideal, &edges);
