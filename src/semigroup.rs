@@ -42,6 +42,10 @@ impl FlowSemigroup {
         )
     }
 
+    fn get_products(flow: &flow::Flow, other: &flow::Flow) -> rayon::vec::IntoIter<flow::Flow> {
+        vec![flow * other].into_par_iter()
+    }
+
     fn close_by_product_and_iteration(&mut self) {
         let mut to_process: VecDeque<flow::Flow> = self.flows.iter().cloned().collect();
         let mut processed = HashSet::<flow::Flow>::new();
@@ -66,8 +70,14 @@ impl FlowSemigroup {
                 //debug!("\n\nSkipped iteration\n{}", iteration);
             }
             {
-                let right_products = self.flows.par_iter().map(|other| &flow * other);
-                let left_products = self.flows.par_iter().map(|other| other * &flow);
+                let right_products = self
+                    .flows
+                    .par_iter()
+                    .flat_map(|other| Self::get_products(&flow, other));
+                let left_products = self
+                    .flows
+                    .par_iter()
+                    .flat_map(|other| Self::get_products(other, &flow));
                 let products: HashSet<flow::Flow> = left_products.chain(right_products).collect();
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
