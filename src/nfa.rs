@@ -125,20 +125,19 @@ impl Nfa {
 
         // Create NFA struct and filling it with data from auxiliary boxes
         let mut nfa = Nfa {
-            states,
+            states: states.iter().map(|s| names[s].to_string()).collect(),
             initial: HashSet::new(),
             accepting: HashSet::new(),
             transitions: vec![],
         };
-        for state in initials.iter() {
-            //println!("IN {:#?}", state);
-            nfa.add_initial(state);
+        for state in initials {
+            nfa.add_initial(&names[&state]);
         }
         for state in finals {
-            nfa.add_final(&state);
+            nfa.add_final(&names[&state]);
         }
         for (from, label, to) in transitions {
-            nfa.add_transition(&from, &to, &label);
+            nfa.add_transition(&names[&from], &names[&to], &label);
         }
         nfa
     }
