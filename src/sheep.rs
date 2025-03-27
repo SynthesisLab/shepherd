@@ -100,6 +100,22 @@ impl Sheep {
                 .collect(),
         )
     }
+
+    pub(crate) fn round_down(&mut self, upper_bound: u16, dim: usize) {
+        for i in 0..dim {
+            if let Coef::Value(x) = self.get(i) {
+                if x > upper_bound {
+                    self.set(i, Coef::Value(upper_bound));
+                }
+            }
+        }
+    }
+
+    pub(crate) fn some_finite_coordinate_is_larger_than(&self, upper_bound: u16) -> bool {
+        self.0
+            .iter()
+            .any(|&x| x < OMEGA && x > Coef::Value(upper_bound))
+    }
 }
 
 impl fmt::Display for Sheep {
