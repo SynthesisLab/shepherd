@@ -593,7 +593,7 @@ mod test {
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
         ]);
         let edges = crate::graph::Graph::from_vec(
-            5,
+            6,
             vec![
                 (0, 0),
                 (0, 1),
@@ -632,7 +632,7 @@ mod test {
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
         ]);
         let edges = crate::graph::Graph::from_vec(
-            5,
+            6,
             vec![(0, 0), (1, 2), (1, 3), (3, 4), (2, 5), (4, 4), (5, 5)],
         );
         let pre_image0 = ideal0.safe_pre_image(&edges);
