@@ -26,7 +26,12 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
     let mut step = 1;
     while result {
         //convert strategy to flows
-        info!("Step {} strategy\n{}", step, strategy);
+        info!(
+            "Step {} states\n{}\nstrategy\n{}",
+            step,
+            nfa.states_str(),
+            strategy
+        );
         step += 1;
         let action_flows = compute_action_flows(&strategy, &edges);
         debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
