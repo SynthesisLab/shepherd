@@ -119,8 +119,7 @@ impl Flow {
                     target
                         .iter()
                         .map(|&j| Self::get(&self.entries, i, j, self.dim))
-                        .max()
-                        .unwrap()
+                        .sum::<Coef>()
                 })
                 .collect(),
         )
