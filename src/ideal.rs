@@ -3,7 +3,6 @@ use crate::memoizer::Memoizer;
 use crate::sheep::Sheep;
 use crate::{coef, partitions};
 use cached::proc_macro::cached;
-use log::debug;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::fmt;
@@ -186,7 +185,8 @@ impl Ideal {
     /// );
     /// ```
     pub(crate) fn safe_pre_image(&self, edges: &crate::graph::Graph) -> Ideal {
-        let dim = self.0.iter().next().map_or(0, |x| x.len());
+        let dim16 = edges.dim();
+        let dim = dim16 as usize;
         if dim == 0 || self.is_empty() {
             return Ideal::new();
         }
@@ -252,7 +252,7 @@ impl Ideal {
         let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
         candidates
             .par_iter()
-            .filter(|&candidate| self.is_safe(candidate, edges))
+            .filter(|&candidate| self.is_safe_with_roundup(candidate, edges))
             .collect::<HashSet<_>>()
             .iter()
             .for_each(|c| {
@@ -269,15 +269,15 @@ impl Ideal {
         &self,
         candidate: &Sheep,
         edges: &crate::graph::Graph,
-        ideal: &mut Ideal,
+        accumulator: &mut Ideal,
     ) {
-        if ideal.contains(candidate) {
+        if accumulator.contains(candidate) {
             //println!("{} already in ideal", candidate);
             return;
         }
-        if self.is_safe(candidate, edges) {
+        if self.is_safe_with_roundup(candidate, edges) {
             //println!("{} inserted", candidate);
-            ideal.insert(candidate);
+            accumulator.insert(candidate);
             return;
         }
         //println!("{} refined", candidate);
@@ -292,16 +292,17 @@ impl Ideal {
                 loop {
                     if c <= 2 {
                         candidate_copy.set(i, Coef::Value(c));
-                        self.safe_pre_image_from(&candidate_copy, edges, ideal);
+                        self.safe_pre_image_from(&candidate_copy, edges, accumulator);
                         candidate_copy.set(i, ci);
                         break;
                     } else {
                         candidate_copy.set(i, Coef::Value(c / 2));
-                        if !self.is_safe(&candidate_copy, edges) {
+                        if !self.is_safe_with_roundup(&candidate_copy, edges) {
                             c /= 2;
                         } else {
+                            accumulator.insert(&candidate_copy);
                             candidate_copy.set(i, Coef::Value(c));
-                            self.safe_pre_image_from(&candidate_copy, edges, ideal);
+                            self.safe_pre_image_from(&candidate_copy, edges, accumulator);
                             candidate_copy.set(i, ci);
                             break;
                         }
@@ -315,20 +316,23 @@ impl Ideal {
     /// the next configuration belongs to the ideal.
     /// Unsafe is:
     /// - either putting some weight on a node with no successor
-    /// - or taking the risk that the successor configuration is not in the ideal
+    /// - or taking the risk that the successor configuration is not in the ideal.
+    /// any constant larger than the dimension appearing in a successor configuration
+    /// is considered as omega.
     ///
-    fn is_safe(&self, candidate: &Sheep, edges: &crate::graph::Graph) -> bool {
+    fn is_safe_with_roundup(&self, candidate: &Sheep, edges: &crate::graph::Graph) -> bool {
         let dim = edges.dim() as usize;
+        let max_finite_value = edges.dim();
 
         //if we lose some sheep, forget about it
-        let lose_sheep = (0..dim)
-            .any(|i| candidate.get(i) >= Coef::Value(1) && edges.get_successors(i).is_empty());
+        let lose_sheep =
+            (0..dim).any(|i| candidate.get(i) != C0 && edges.get_successors(i).is_empty());
         if lose_sheep {
             return false;
         }
 
-        let image: Ideal = Self::get_image_rounded_up(dim, candidate, edges);
-        //debug!("image\n{}", &image);
+        let image: Ideal = Self::get_image(dim as usize, candidate, edges, max_finite_value);
+        //println!("image\n{}", &image);
         let answer = image.sheeps().all(|x| self.contains(x));
         answer
     }
@@ -354,14 +358,19 @@ impl Ideal {
         self.0.is_empty()
     }
 
-    fn get_image_rounded_up(dim: usize, dom: &Sheep, edges: &crate::graph::Graph) -> Ideal {
+    fn get_image(
+        dim: usize,
+        dom: &Sheep,
+        edges: &crate::graph::Graph,
+        max_finite_value: u16,
+    ) -> Ideal {
         let mut ideal = Ideal::new();
         let choices = (0..dom.len())
             .map(|index| get_choices(dim, dom.get(index), edges.get_successors(index)))
             .collect::<Vec<_>>();
         for im in partitions::cartesian_product(&choices)
             .into_iter()
-            .map(|x| x.into_iter().sum::<Sheep>())
+            .map(|x| x.into_iter().sum::<Sheep>().round_up(max_finite_value))
             .collect::<Vec<_>>()
         {
             ideal.insert(&im);
@@ -372,29 +381,29 @@ impl Ideal {
 
 #[cached]
 fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
-    debug!("get_choices({}, {:?}, {:?})", dim, value, successors);
+    //println!("get_choices({}, {:?}, {:?})", dim, value, successors);
     //assert!(value == OMEGA || value <= Coef::Value(dim as u16));
-    if value == C0 {
-        vec![Sheep::new(dim, C0)]
-    } else if value > Coef::Value(dim as u16) {
-        let mut base: Vec<Coef> = vec![C0; dim];
-        for succ in successors {
-            base[succ] = OMEGA;
-        }
-        vec![Sheep::from_vec(base)]
-    } else if let Coef::Value(c) = value {
-        let transports: Vec<Vec<u16>> = partitions::get_transports(c, successors.len());
-        let mut result: Vec<Sheep> = Vec::new();
-        for transport in transports {
-            let mut vec = vec![C0; dim];
-            for succ_index in 0..successors.len() {
-                vec[successors[succ_index]] = Coef::Value(transport[succ_index]);
+    match value {
+        C0 => vec![Sheep::new(dim, C0)],
+        OMEGA => {
+            let mut base: Vec<Coef> = vec![C0; dim];
+            for succ in successors {
+                base[succ] = OMEGA;
             }
-            result.push(Sheep::from_vec(vec));
+            vec![Sheep::from_vec(base)]
         }
-        result
-    } else {
-        panic!("logically inconsistent case");
+        Coef::Value(c) => {
+            let transports: Vec<Vec<u16>> = partitions::get_transports(c, successors.len());
+            let mut result: Vec<Sheep> = Vec::new();
+            for transport in transports {
+                let mut vec = vec![C0; dim];
+                for succ_index in 0..successors.len() {
+                    vec[successors[succ_index]] = Coef::Value(transport[succ_index]);
+                }
+                result.push(Sheep::from_vec(vec));
+            }
+            result
+        }
     }
 }
 
@@ -495,7 +504,7 @@ mod test {
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, C1, C0], &[C0, C0, C1]]);
         let candidate = Sheep::from_vec(vec![C1, C0, C0]);
-        assert!(ideal.is_safe(&candidate, &edges));
+        assert!(ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
     #[test]
@@ -504,7 +513,7 @@ mod test {
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c4, C0], &[C0, C0, c4]]);
         let candidate = Sheep::from_vec(vec![c4, C0, C0]);
-        assert!(!ideal.is_safe(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
     #[test]
@@ -520,7 +529,7 @@ mod test {
             &[C0, C0, c4],
         ]);
         let candidate = Sheep::from_vec(vec![c4, C0, C0]);
-        assert!(ideal.is_safe(&candidate, &edges));
+        assert!(ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
     #[test]
@@ -530,7 +539,7 @@ mod test {
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C0, c3]]);
         let candidate = Sheep::from_vec(vec![c4, C0, C0]);
-        assert!(!ideal.is_safe(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
     #[test]
@@ -642,14 +651,14 @@ mod test {
     #[test]
     fn is_safe6() {
         let c5 = Coef::Value(5);
-        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2), (0, 3)]);
+        let edges = crate::graph::Graph::from_vec(5, vec![(0, 1), (0, 2), (0, 3)]);
         let ideal = Ideal::from_vecs(&[
             &[C0, OMEGA, OMEGA, C0, OMEGA],
             &[C0, C0, OMEGA, OMEGA, OMEGA],
             &[C0, OMEGA, C0, OMEGA, OMEGA],
         ]);
         let candidate = Sheep::from_vec(vec![c5, C0, C0, C0, C0]);
-        assert!(!ideal.is_safe(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
     #[test]

@@ -7,6 +7,14 @@ pub enum Coef {
     Value(u16),
     Omega,
 }
+impl Coef {
+    pub(crate) fn round_up(&self, max_finite_value: u16) -> Coef {
+        match self {
+            Coef::Value(x) if *x > max_finite_value => Coef::Omega,
+            _ => *self,
+        }
+    }
+}
 
 pub const C0: Coef = Coef::Value(0);
 #[allow(dead_code)]

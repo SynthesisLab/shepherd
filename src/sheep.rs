@@ -91,6 +91,15 @@ impl Sheep {
     pub(crate) fn all_omega(&self, succ: &[usize]) -> bool {
         succ.iter().all(|&i| self.get(i) == OMEGA)
     }
+
+    pub(crate) fn round_up(&mut self, max_finite_value: u16) -> Sheep {
+        return Sheep(
+            self.0
+                .iter()
+                .map(|x| x.round_up(max_finite_value))
+                .collect(),
+        );
+    }
 }
 
 impl fmt::Display for Sheep {
