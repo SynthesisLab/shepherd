@@ -519,17 +519,10 @@ mod test {
 
     #[test]
     fn is_safe3() {
-        let c4 = Coef::Value(4);
         let c3 = Coef::Value(3);
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
-        let ideal = Ideal::from_vecs(&[
-            &[C0, c4, C0],
-            &[C0, c3, C1],
-            &[C0, C2, C2],
-            &[C0, C1, c3],
-            &[C0, C0, c4],
-        ]);
-        let candidate = Sheep::from_vec(vec![c4, C0, C0]);
+        let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C2, C1], &[C0, C1, C2], &[C0, C0, c3]]);
+        let candidate = Sheep::from_vec(vec![c3, C0, C0]);
         assert!(ideal.is_safe_with_roundup(&candidate, &edges));
     }
 
