@@ -99,7 +99,8 @@ mod tests {
     //test compute_action_flows
     #[test]
     fn test_nfa_1() {
-        let mut nfa = Nfa::from_size(2);
+        let dim = 2;
+        let mut nfa = Nfa::from_size(dim);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
         nfa.add_transition_by_index1(0, 1, 'a');
@@ -108,7 +109,7 @@ mod tests {
         let edges = nfa.get_edges();
         let action_flows = compute_action_flows(&strategy, &edges);
         //a single action flow
-        let flow: flow::Flow = Flow::from_entries(2, &[C0, OMEGA, C0, OMEGA]);
+        let flow: flow::Flow = Flow::from_entries(dim, dim, &[C0, OMEGA, C0, OMEGA]);
         assert_eq!(action_flows, HashSet::from([flow]));
 
         let edges = nfa.get_edges();
@@ -124,7 +125,8 @@ mod tests {
 
     #[test]
     fn test_nfa_2() {
-        let mut nfa = Nfa::from_size(2);
+        let dim = 2;
+        let mut nfa = Nfa::from_size(dim);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
         nfa.add_transition_by_index1(0, 0, 'b');
@@ -139,8 +141,8 @@ mod tests {
         assert_eq!(
             computed,
             HashSet::from([
-                Flow::from_entries(2, &[C0, OMEGA, C0, OMEGA]),
-                Flow::from_entries(2, &[OMEGA, C0, OMEGA, OMEGA]),
+                Flow::from_entries(dim, dim, &[C0, OMEGA, C0, OMEGA]),
+                Flow::from_entries(dim, dim, &[OMEGA, C0, OMEGA, OMEGA]),
             ])
         );
         let edges = nfa.get_edges();

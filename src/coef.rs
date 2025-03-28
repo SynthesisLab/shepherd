@@ -1,6 +1,6 @@
 use std::fmt;
 use std::iter::Sum;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, PartialOrd, Ord)]
 pub enum Coef {
@@ -13,10 +13,6 @@ impl Coef {
             Coef::Value(x) if *x > max_finite_value => Coef::Omega,
             _ => *self,
         }
-    }
-
-    pub(crate) fn is_finite(&self) -> bool {
-        return self != &Coef::Omega;
     }
 }
 
@@ -45,6 +41,15 @@ impl Add for Coef {
     type Output = Coef;
     fn add(self, other: Self) -> Self::Output {
         &self + &other
+    }
+}
+
+impl AddAssign for Coef {
+    fn add_assign(&mut self, other: Self) {
+        *self = match (*self, other) {
+            (Coef::Omega, _) | (_, Coef::Omega) => Coef::Omega,
+            (Coef::Value(x0), Coef::Value(x1)) => Coef::Value(x0 + x1),
+        };
     }
 }
 

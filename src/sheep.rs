@@ -2,6 +2,7 @@ use crate::coef::{Coef, OMEGA};
 use std::cmp::min;
 use std::fmt;
 use std::iter::Sum;
+use std::ops::{Add, AddAssign};
 use std::vec::Vec;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -20,21 +21,69 @@ impl PartialOrd for Sheep {
     }
 }
 
+impl Add for &Sheep {
+    type Output = Sheep;
+
+    fn add(self, other: Self) -> Self::Output {
+        debug_assert!(self.len() == other.len());
+        Sheep(
+            self.0
+                .iter()
+                .zip(other.0.iter())
+                .map(|(&x, &y)| x + y)
+                .collect(),
+        )
+    }
+}
+
+impl Add for Sheep {
+    type Output = Sheep;
+    fn add(self, other: Self) -> Self::Output {
+        &self + &other
+    }
+}
+
+impl AddAssign for Sheep {
+    fn add_assign(&mut self, other: Self) {
+        debug_assert!(self.len() == other.len());
+        for (i, x) in self.0.iter_mut().enumerate() {
+            *x += other.0[i];
+        }
+    }
+}
+
+//will crash for empty iterators
 impl Sum for Sheep {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         let mut iter = iter;
-        let mut result = iter.next().unwrap().clone();
-        for x in iter {
-            result = Sheep(
-                result
-                    .0
-                    .iter()
-                    .zip(x.0.iter())
-                    .map(|(x, y)| x + y)
-                    .collect(),
-            );
+        match iter.next() {
+            None => panic!("Cannot sum up empty sheep iterator"),
+            Some(mut sheep) => {
+                for x in iter {
+                    sheep += x;
+                }
+                sheep
+            }
         }
-        result
+    }
+}
+
+impl<'a> Sum<&'a Sheep> for Sheep {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = &'a Sheep>,
+    {
+        let mut iter = iter;
+        match iter.next() {
+            None => panic!("Cannot sum up empty sheep iterator"),
+            Some(sheep) => {
+                let mut result = sheep.clone();
+                for x in iter {
+                    result.add_other(x);
+                }
+                result
+            }
+        }
     }
 }
 
@@ -64,7 +113,7 @@ impl Sheep {
     }
 
     pub(crate) fn intersection(x: &Sheep, sheep: &Sheep) -> Sheep {
-        assert!(x.len() == sheep.len());
+        debug_assert!(x.len() == sheep.len());
         Sheep(
             x.0.iter()
                 .zip(sheep.0.iter())
@@ -82,7 +131,7 @@ impl Sheep {
     ) -> Sheep {
         let mut result = vec![Coef::Value(0); dim];
         for (i, &x) in predecessors.iter().enumerate() {
-            assert!(x < dim);
+            debug_assert!(x < dim);
             result[x] = Coef::Value(partition[i]);
         }
         Sheep(result)
@@ -115,8 +164,9 @@ impl Sheep {
         self.0
             .iter()
             .any(|&x| x < OMEGA && x > Coef::Value(upper_bound))
+    }
 
-                // create a CSV representation of this sheep,
+    // create a CSV representation of this sheep,
     // as comma separated values, one for each state
     pub fn as_csv(&self) -> String {
         let content = self
@@ -128,6 +178,17 @@ impl Sheep {
         content
     }
 
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Coef> {
+        self.0.iter()
+    }
+
+    //why AddAssign does not allow adding a reference !!??
+    pub fn add_other(&mut self, x: &Sheep) {
+        debug_assert!(self.len() == x.len());
+        for i in 0..self.len() {
+            self.0[i] += x.0[i];
+        }
+    }
 }
 
 impl fmt::Display for Sheep {

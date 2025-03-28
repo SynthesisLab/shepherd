@@ -3,6 +3,7 @@ use crate::memoizer::Memoizer;
 use crate::sheep::Sheep;
 use crate::{coef, partitions};
 use cached::proc_macro::cached;
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::fmt;
@@ -58,9 +59,10 @@ static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(||
                 }
             })
             .collect::<Vec<_>>();
-        partitions::cartesian_product(&downward_closure)
-            .into_iter()
-            .map(Sheep::from_vec)
+        downward_closure
+            .iter()
+            .multi_cartesian_product()
+            .map(|v| Sheep::from_vec(v.into_iter().cloned().collect()))
             .collect()
     }))
 });
@@ -369,9 +371,22 @@ impl Ideal {
         let choices = (0..dom.len())
             .map(|index| get_choices(dim, dom.get(index), edges.get_successors(index)))
             .collect::<Vec<_>>();
-        for im in partitions::cartesian_product(&choices)
-            .into_iter()
-            .map(|x| x.into_iter().sum::<Sheep>().round_up(max_finite_value))
+        for im in choices
+            .iter()
+            .multi_cartesian_product()
+            .map(|x| {
+                let mut result = Sheep::new(dim, C0);
+                for s in x {
+                    result.add_other(s);
+                }
+                /*
+                less efficient
+                  x.into_iter()
+                      .fold(Sheep::new(dim, C0), |sum, x| &sum + x)
+                      .sum::<&Sheep>().round_up(max_finite_value)
+                      */
+                result.round_up(max_finite_value)
+            })
             .collect::<Vec<_>>()
         {
             ideal.insert(&im);

@@ -4,26 +4,27 @@ use crate::nfa;
 use crate::partitions;
 use crate::sheep;
 use crate::sheep::Sheep;
-use log::debug;
+use itertools::Itertools;
 use std::fmt;
 use std::ops::Mul;
-use std::{collections::HashSet, vec::Vec};
+use std::{collections::HashSet, vec::Vec}; // Import the itertools crate for multi_cartesian_product
 
 pub type Domain = Vec<Coef>;
 
 #[derive(Eq, PartialEq, Hash, Clone, Debug)]
 pub struct Flow {
-    pub dim: usize,
-    //size is dim * dim
+    pub nb_rows: usize,
+    pub nb_cols: usize,
+    //size is nb_rows * nb_cols
     entries: Vec<Coef>,
 }
 
 impl PartialOrd for Flow {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let self_is_smaller_than_other =
-            (0..self.dim * self.dim).all(|i| self.entries[i] <= other.entries[i]);
+            (0..self.nb_rows * self.nb_rows).all(|i| self.entries[i] <= other.entries[i]);
         let self_is_greater_than_other =
-            (0..self.dim * self.dim).all(|i| self.entries[i] >= other.entries[i]);
+            (0..self.nb_rows * self.nb_rows).all(|i| self.entries[i] >= other.entries[i]);
         match (self_is_smaller_than_other, self_is_greater_than_other) {
             (true, true) => Some(std::cmp::Ordering::Equal),
             (true, false) => Some(std::cmp::Ordering::Less),
@@ -48,14 +49,20 @@ impl Mul for Flow {
 }
 
 impl Flow {
-    pub fn from_entries(dim: usize, entries: &[Coef]) -> Flow {
-        if entries.len() != dim * dim {
-            panic!("Invalid number of entries");
-        }
+    pub fn from_entries(nb_rows: usize, nb_cols: usize, entries: &[Coef]) -> Flow {
+        debug_assert!(
+            entries.len() != nb_rows * nb_cols,
+            "Invalid number of entries"
+        );
         Flow {
-            dim,
+            nb_rows,
+            nb_cols,
             entries: entries.into(),
         }
+    }
+
+    pub fn is_square(&self) -> bool {
+        self.nb_rows == self.nb_cols
     }
 
     #[allow(dead_code)]
@@ -65,6 +72,7 @@ impl Flow {
             panic!("Invalid line size ");
         }
         Flow::from_entries(
+            dim,
             dim,
             &lines
                 .iter()
@@ -77,7 +85,7 @@ impl Flow {
     pub fn product(&self, other: &Flow) -> Flow {
         let entries = &self.entries;
         let other_entries = &other.entries;
-        let dim = self.dim;
+        let dim = self.nb_rows;
         let mut result: Vec<Coef> = vec![C0; dim * dim];
         //not idiomatic but fast
         let mut k = 0;
@@ -113,25 +121,72 @@ impl Flow {
             }
         }
         Flow {
-            dim,
+            nb_rows: dim,
+            nb_cols: dim,
             entries: result,
         }
     }
 
+    //deterministic product
+    pub fn compose(
+        left: &Flow,
+        transports: Vec<&(Vec<usize>, Flow, Vec<usize>)>,
+        right: &Flow,
+    ) -> Flow {
+        debug_assert!(left.is_square());
+        debug_assert!(right.is_square());
+        debug_assert!(left.nb_rows == right.nb_rows);
+        let dim = left.nb_rows;
+        debug_assert!(transports.iter().all(|(is, t, js)| is.len() == t.nb_rows
+            && js.len() == t.nb_cols
+            && is.iter().all(|&i| i < dim)
+            && js.iter().all(|&j| j < dim)));
+        let mut entries: Vec<Coef> = vec![C0; dim * dim];
+        let mut k = 0;
+
+        for i in 0..dim {
+            let i0 = i * dim;
+            for j in 0..dim {
+                let mut li = i0;
+                let mut lj = j;
+                //more effcicient than the idiomatic stream
+                for _l in 0..dim {
+                    if left.entries[li] == OMEGA && right.entries[lj] == OMEGA {
+                        entries[k] = OMEGA;
+                        break;
+                    } else {
+                        li += 1;
+                        lj += dim;
+                    }
+                }
+                k += 1;
+            }
+        }
+        /*
+        for i in 0..left {
+            let i0 = i * dim;
+            for j in 0..dim {}
+        } */
+        Flow {
+            nb_rows: dim,
+            nb_cols: dim,
+            entries,
+        }
+    }
+
     pub fn iteration(&self) -> Flow {
-        let entries = &self.entries;
-        let dim = self.dim;
-        let mut e = self.idempotent();
+        let dim = self.nb_rows;
+        let mut result: Flow = self.idempotent();
         for s0 in 0..dim {
             for t0 in 0..dim {
                 if self.is_1(&s0, &t0) {
-                    debug!("processing ? -- {} -- {} -- ?", s0, t0);
+                    //debug!("processing ? -- {} -- {} -- ?", s0, t0);
                     for s in 0..dim {
                         if self.is_omega(&s, &s0) {
                             for t in 0..dim {
-                                if Self::is_omega(entries, t0, t, dim) {
-                                    debug!("found {} -- {} -- {} -- {}", s, s0, t0, t);
-                                    e.entries[s * dim + t] = OMEGA;
+                                if self.is_omega(&t0, &t) {
+                                    //debug!("found {} -- {} -- {} -- {}", s, s0, t0, t);
+                                    result.entries[s * dim + t] = OMEGA;
                                 }
                             }
                         }
@@ -139,10 +194,7 @@ impl Flow {
                 }
             }
         }
-        Flow {
-            dim,
-            entries: e.entries,
-        }
+        result
     }
 
     ///computes the preimage of a target set of states
@@ -150,7 +202,7 @@ impl Flow {
     /// finite coordinates are summed up...
     pub fn pre_image(&self, target: &[nfa::State]) -> Sheep {
         Sheep::from_vec(
-            (0..self.dim)
+            (0..self.nb_rows)
                 .map(|i| target.iter().map(|&j| self.get(&i, &j)).sum::<Coef>())
                 .collect(),
         )
@@ -174,14 +226,13 @@ impl Flow {
             panic!("Edge out of domain");
         }
         let lines = Self::get_lines_vec(domain, edges);
-        partitions::cartesian_product(&lines)
-            .into_iter()
-            .map(|x| {
-                let entries = x
-                    .iter()
-                    .flat_map(|x| x.clone().into_iter())
-                    .collect::<Vec<_>>();
-                Flow { dim, entries }
+        lines
+            .iter()
+            .multi_cartesian_product()
+            .map(|x| Flow {
+                nb_rows: dim,
+                nb_cols: dim,
+                entries: x.into_iter().flatten().cloned().collect(),
             })
             .collect()
     }
@@ -199,32 +250,37 @@ impl Flow {
         result
     }
 
-    fn get(&self, i: &usize, j: &usize) -> Coef {
-        self.entries[i * self.dim + j]
+    pub fn get(&self, i: &usize, j: &usize) -> Coef {
+        self.entries[i * self.nb_rows + j]
+    }
+
+    pub(crate) fn set(&mut self, i: &usize, j: &usize, c: Coef) {
+        self.entries[i * self.nb_rows + j] = c;
     }
 
     fn is_1(&self, i: &usize, j: &usize) -> bool {
-        self.entries[i * self.dim + j] == C1
+        self.entries[i * self.nb_rows + j] == C1
     }
 
     fn is_omega(&self, i: &usize, j: &usize) -> bool {
-        self.entries[i * self.dim + j] == OMEGA
+        self.entries[i * self.nb_rows + j] == OMEGA
     }
 
     fn get_lines_vec(domain: &sheep::Sheep, edges: &Graph) -> Vec<Vec<Domain>> {
         let dim = domain.len();
-        (0..dim)
-            .map(|i| {
+        domain
+            .iter()
+            .enumerate()
+            .map(move |(i, &coef)| {
                 let out = edges.get_successors(i);
-                let coef = domain.get(i);
-                Self::get_lines(out, coef, dim)
+                Self::get_lines(&out, &coef, dim)
             })
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     //todo cache results
-    fn get_lines(out: Vec<usize>, coef: Coef, dim: usize) -> Vec<Domain> {
-        match coef {
+    fn get_lines(out: &[usize], coef: &Coef, dim: usize) -> Vec<Domain> {
+        match *coef {
             C0 => vec![vec![C0; dim]],
             OMEGA => vec![(0..dim)
                 .map(|i| if out.contains(&i) { OMEGA } else { C0 })
@@ -244,15 +300,15 @@ impl Flow {
 
     //todo: store in object if heavy use
     pub(crate) fn edges_to(&self, j: usize) -> Vec<(usize, Coef)> {
-        (0..self.dim)
-            .map(|i| (i % self.dim, self.get(&i, &j)))
+        (0..self.nb_rows)
+            .map(|i| (i % self.nb_rows, self.get(&i, &j)))
             .collect()
     }
 
     //todo: store in object if heavy use
-    pub(crate) fn edges_from<'a>(&'a self, i: usize) -> Vec<(usize, Coef)> {
-        (0..self.dim)
-            .map(|j| (i % self.dim, self.get(&i, &j)))
+    pub(crate) fn edges_from(&self, i: usize) -> Vec<(usize, Coef)> {
+        (0..self.nb_rows)
+            .map(|j| (i % self.nb_rows, self.get(&i, &j)))
             .collect()
     }
 }
@@ -260,9 +316,10 @@ impl Flow {
 impl fmt::Display for Flow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut result = String::new();
-        for i in 0..self.dim {
-            let sheep =
-                sheep::Sheep::from_vec(self.entries[i * self.dim..(i + 1) * self.dim].to_vec());
+        for i in 0..self.nb_rows {
+            let sheep = sheep::Sheep::from_vec(
+                self.entries[i * self.nb_rows..(i + 1) * self.nb_rows].to_vec(),
+            );
             result.push_str(&sheep.to_string());
             result.push('\n');
         }
@@ -288,7 +345,7 @@ mod test {
         let out = vec![0, 1];
         let dim = 3;
         assert_eq!(
-            Flow::get_lines(out, C3, dim),
+            Flow::get_lines(&out, &C3, dim),
             vec![
                 vec![C3, C0, C0],
                 vec![C2, C1, C0],
@@ -304,7 +361,7 @@ mod test {
         let coef = Coef::Omega;
         let dim = 3;
         let expected = vec![vec![OMEGA, OMEGA, C0]];
-        assert_eq!(Flow::get_lines(out, coef, dim), expected);
+        assert_eq!(Flow::get_lines(&out, &coef, dim), expected);
     }
 
     //test _get_lines_vec on an example with domain=[1,3,omega] and edges=[(0,1),(1,0),(1,1),(2,1),(2,2)]
@@ -341,19 +398,23 @@ mod test {
         let flows = Flow::from_domain_and_edges(&domain, &edges);
         let expected = vec![
             Flow {
-                dim: 3,
+                nb_rows: 3,
+                nb_cols: 3,
                 entries: vec![C0, C1, C0, C0, C3, C0, C0, OMEGA, OMEGA],
             },
             Flow {
-                dim: 3,
+                nb_rows: 3,
+                nb_cols: 3,
                 entries: vec![C0, C1, C0, C1, C2, C0, C0, OMEGA, OMEGA],
             },
             Flow {
-                dim: 3,
+                nb_rows: 3,
+                nb_cols: 3,
                 entries: vec![C0, C1, C0, C2, C1, C0, C0, OMEGA, OMEGA],
             },
             Flow {
-                dim: 3,
+                nb_rows: 3,
+                nb_cols: 3,
                 entries: vec![C0, C1, C0, C3, C0, C0, C0, OMEGA, OMEGA],
             },
         ];
@@ -398,11 +459,13 @@ mod test {
     #[test]
     fn iteration_test() {
         let flow = Flow {
-            dim: 2,
+            nb_rows: 2,
+            nb_cols: 2,
             entries: vec![OMEGA, C1, C0, OMEGA],
         };
         let expected = Flow {
-            dim: 2,
+            nb_rows: 2,
+            nb_cols: 2,
             entries: vec![OMEGA, OMEGA, C0, OMEGA],
         };
         assert_eq!(flow.iteration(), expected);
