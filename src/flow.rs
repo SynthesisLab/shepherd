@@ -50,8 +50,9 @@ impl Mul for Flow {
 
 impl Flow {
     pub fn from_entries(nb_rows: usize, nb_cols: usize, entries: &[Coef]) -> Flow {
-        debug_assert!(
-            entries.len() != nb_rows * nb_cols,
+        debug_assert_eq!(
+            entries.len(),
+            nb_rows * nb_cols,
             "Invalid number of entries"
         );
         Flow {
@@ -135,7 +136,7 @@ impl Flow {
     ) -> Flow {
         debug_assert!(left.is_square());
         debug_assert!(right.is_square());
-        debug_assert!(left.nb_rows == right.nb_rows);
+        debug_assert_eq!(left.nb_rows, right.nb_rows);
         let dim = left.nb_rows;
         debug_assert!(transports.iter().all(|(is, t, js)| is.len() == t.nb_rows
             && js.len() == t.nb_cols

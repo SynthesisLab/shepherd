@@ -47,8 +47,16 @@ impl FlowSemigroup {
     }
 
     ///non-deterministic product
+    fn get_products(
+        left: &Flow,
+        right: &Flow,
+        _maximal_finite_coordinate: u16,
+    ) -> rayon::iter::Once<Flow> {
+        rayon::iter::once(left.clone() * right.clone())
+    }
+    /*
     fn get_products(left: &Flow, right: &Flow, maximal_finite_coordinate: u16) -> Vec<Flow> {
-        debug_assert!(left.nb_rows == right.nb_rows);
+        debug_assert_eq!(left.nb_rows , right.nb_rows);
         let dim = left.nb_rows;
         let transports = (0..dim)
             .map(|k| {
@@ -71,8 +79,8 @@ impl FlowSemigroup {
             .multi_cartesian_product()
             .map(|transports| Flow::compose(left, transports, right))
             .collect::<Vec<_>>()
-        //rayon::iter::once(left.clone() * right.clone())
-    }
+        //
+    }*/
 
     fn close_by_product_and_iteration(&mut self, maximal_finite_coordinate: u16) {
         let mut to_process: VecDeque<Flow> = self.flows.iter().cloned().collect();

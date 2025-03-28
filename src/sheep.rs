@@ -25,7 +25,7 @@ impl Add for &Sheep {
     type Output = Sheep;
 
     fn add(self, other: Self) -> Self::Output {
-        debug_assert!(self.len() == other.len());
+        debug_assert_eq!(self.len(), other.len());
         Sheep(
             self.0
                 .iter()
@@ -45,7 +45,7 @@ impl Add for Sheep {
 
 impl AddAssign for Sheep {
     fn add_assign(&mut self, other: Self) {
-        debug_assert!(self.len() == other.len());
+        debug_assert_eq!(self.len(), other.len());
         for (i, x) in self.0.iter_mut().enumerate() {
             *x += other.0[i];
         }
@@ -113,7 +113,7 @@ impl Sheep {
     }
 
     pub(crate) fn intersection(x: &Sheep, sheep: &Sheep) -> Sheep {
-        debug_assert!(x.len() == sheep.len());
+        debug_assert_eq!(x.len(), sheep.len());
         Sheep(
             x.0.iter()
                 .zip(sheep.0.iter())
@@ -184,7 +184,7 @@ impl Sheep {
 
     //why AddAssign does not allow adding a reference !!??
     pub fn add_other(&mut self, x: &Sheep) {
-        debug_assert!(self.len() == x.len());
+        debug_assert_eq!(self.len(), x.len());
         for i in 0..self.len() {
             self.0[i] += x.0[i];
         }
