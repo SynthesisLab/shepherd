@@ -14,6 +14,10 @@ impl Coef {
             _ => *self,
         }
     }
+
+    pub(crate) fn is_finite(&self) -> bool {
+        return self != &Coef::Omega;
+    }
 }
 
 pub const C0: Coef = Coef::Value(0);

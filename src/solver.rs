@@ -35,7 +35,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         step += 1;
         let action_flows = compute_action_flows(&strategy, &edges);
         debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
-        let semigroup = semigroup::FlowSemigroup::compute(&action_flows);
+        let semigroup = semigroup::FlowSemigroup::compute(&action_flows, dim as u16);
         debug!("Semigroup:\n{}", semigroup);
         let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
         winning_ideal.insert(&final_ideal);

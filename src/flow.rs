@@ -48,84 +48,6 @@ impl Mul for Flow {
 }
 
 impl Flow {
-    pub fn product(&self, other: &Flow) -> Flow {
-        let entries = &self.entries;
-        let other_entries = &other.entries;
-        let dim = self.dim;
-        let mut result: Vec<Coef> = vec![C0; dim * dim];
-        //not idiomatic but fast
-        let mut k = 0;
-        for i in 0..dim {
-            let i0 = i * dim;
-            for j in 0..dim {
-                //invariant k = i * dim + j
-                let mut resultk = C0;
-                let mut li = i0;
-                let mut lj = j;
-                for _l in 0..dim {
-                    let c = std::cmp::min(entries[li], other_entries[lj]);
-                    if c == OMEGA {
-                        //shortcut due to existence of a frequent max element, probably not found by the compiler
-                        resultk = OMEGA;
-                        break;
-                    }
-                    if c > resultk {
-                        resultk = c;
-                    }
-                    li += 1;
-                    lj += dim;
-                }
-                result[k] = resultk;
-                k += 1;
-            }
-        }
-        Flow {
-            dim,
-            entries: result,
-        }
-    }
-
-    pub fn iteration(&self) -> Flow {
-        let entries = &self.entries;
-        let dim = self.dim;
-        let mut e = self.idempotent();
-        for s0 in 0..dim {
-            for t0 in 0..dim {
-                if Self::is_1(entries, s0, t0, dim) {
-                    debug!("processing ? -- {} -- {} -- ?", s0, t0);
-                    for s in 0..dim {
-                        if Self::is_omega(entries, s, s0, dim) {
-                            for t in 0..dim {
-                                if Self::is_omega(entries, t0, t, dim) {
-                                    debug!("found {} -- {} -- {} -- {}", s, s0, t0, t);
-                                    e.entries[s * dim + t] = OMEGA;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Flow {
-            dim,
-            entries: e.entries,
-        }
-    }
-
-    pub fn pre_image(&self, target: &[nfa::State]) -> Sheep {
-        Sheep::from_vec(
-            (0..self.dim)
-                .map(|i| {
-                    target
-                        .iter()
-                        .map(|&j| Self::get(&self.entries, i, j, self.dim))
-                        .sum::<Coef>()
-                })
-                .collect(),
-        )
-    }
-
-    #[allow(dead_code)]
     pub fn from_entries(dim: usize, entries: &[Coef]) -> Flow {
         if entries.len() != dim * dim {
             panic!("Invalid number of entries");
@@ -149,6 +71,88 @@ impl Flow {
                 .flat_map(|x| x.iter())
                 .cloned()
                 .collect::<Vec<Coef>>(),
+        )
+    }
+
+    pub fn product(&self, other: &Flow) -> Flow {
+        let entries = &self.entries;
+        let other_entries = &other.entries;
+        let dim = self.dim;
+        let mut result: Vec<Coef> = vec![C0; dim * dim];
+        //not idiomatic but fast
+        let mut k = 0;
+        for i in 0..dim {
+            let i0 = i * dim;
+            for j in 0..dim {
+                //invariant k = i * dim + j
+                let mut resultk: u16 = 0;
+                let mut li = i0;
+                let mut lj = j;
+                let mut is_omega = false;
+                //more effcicient than the idiomatic stream
+                for _l in 0..dim {
+                    let c = std::cmp::min(entries[li], other_entries[lj]);
+                    match c {
+                        Coef::Value(x) => {
+                            resultk = std::cmp::max(resultk, x);
+                            li += 1;
+                            lj += dim;
+                        }
+                        OMEGA => {
+                            is_omega = true;
+                            break;
+                        }
+                    }
+                }
+                result[k] = if is_omega {
+                    OMEGA
+                } else {
+                    Coef::Value(resultk)
+                };
+                k += 1;
+            }
+        }
+        Flow {
+            dim,
+            entries: result,
+        }
+    }
+
+    pub fn iteration(&self) -> Flow {
+        let entries = &self.entries;
+        let dim = self.dim;
+        let mut e = self.idempotent();
+        for s0 in 0..dim {
+            for t0 in 0..dim {
+                if self.is_1(&s0, &t0) {
+                    debug!("processing ? -- {} -- {} -- ?", s0, t0);
+                    for s in 0..dim {
+                        if self.is_omega(&s, &s0) {
+                            for t in 0..dim {
+                                if Self::is_omega(entries, t0, t, dim) {
+                                    debug!("found {} -- {} -- {} -- {}", s, s0, t0, t);
+                                    e.entries[s * dim + t] = OMEGA;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Flow {
+            dim,
+            entries: e.entries,
+        }
+    }
+
+    ///computes the preimage of a target set of states
+    /// that is the maximal ideal from which there exists a path to the target states
+    /// finite coordinates are summed up...
+    pub fn pre_image(&self, target: &[nfa::State]) -> Sheep {
+        Sheep::from_vec(
+            (0..self.dim)
+                .map(|i| target.iter().map(|&j| self.get(&i, &j)).sum::<Coef>())
+                .collect(),
         )
     }
 
@@ -195,16 +199,16 @@ impl Flow {
         result
     }
 
-    fn get(entries: &[Coef], i: usize, j: usize, dim: usize) -> Coef {
-        entries[i * dim + j]
+    fn get(&self, i: &usize, j: &usize) -> Coef {
+        self.entries[i * self.dim + j]
     }
 
-    fn is_1(entries: &[Coef], i: usize, j: usize, dim: usize) -> bool {
-        entries[i * dim + j] == C1
+    fn is_1(&self, i: &usize, j: &usize) -> bool {
+        self.entries[i * self.dim + j] == C1
     }
 
-    fn is_omega(entries: &[Coef], i: usize, j: usize, dim: usize) -> bool {
-        entries[i * dim + j] == OMEGA
+    fn is_omega(&self, i: &usize, j: &usize) -> bool {
+        self.entries[i * self.dim + j] == OMEGA
     }
 
     fn get_lines_vec(domain: &sheep::Sheep, edges: &Graph) -> Vec<Vec<Domain>> {
@@ -236,6 +240,20 @@ impl Flow {
                 })
                 .collect(),
         }
+    }
+
+    //todo: store in object if heavy use
+    pub(crate) fn edges_to(&self, j: usize) -> Vec<(usize, Coef)> {
+        (0..self.dim)
+            .map(|i| (i % self.dim, self.get(&i, &j)))
+            .collect()
+    }
+
+    //todo: store in object if heavy use
+    pub(crate) fn edges_from<'a>(&'a self, i: usize) -> Vec<(usize, Coef)> {
+        (0..self.dim)
+            .map(|j| (i % self.dim, self.get(&i, &j)))
+            .collect()
     }
 }
 
