@@ -21,15 +21,15 @@ Install rust and cargo from https://www.rust-lang.org/tools/install
 
 In the root folder launch
 
-```cargo run -- -f examples/example1.tikz```
+```cargo run -- examples/example1.tikz```
 
 That will load an automaton from the file ```examples/example1.tikz```,
 compute the maximal winning strategy for the random population control problem,
-displays the answer in the terminal, and produces tex and pdf reports `example1.tikz.tex` and `example1.tikz.pdf`.
+displays the answer in the terminal, including a winning strategy for positive instances.
 
 For dot files 
 
-```cargo run -- -i dot -f examples/bottleneck-1-ab.dot```
+```cargo run -- -i dot examples/bottleneck-1-ab.dot```
 
 Check the file ```examples.pdf``` at the root  which gives an overview of all available examples.
 
@@ -40,7 +40,7 @@ Two kind of input files can be processed by `shepherd`.
 ### Tikz files (as produced by finsm.io)
 
 - Create an automaton using https://finsm.io
-- Copy paste the export (in Tikz format) in some local file and give it as input to shepherd, using the `-f` option.
+- Copy paste the export (in Tikz format) in some local file and give it as input to shepherd.
 
 ### DOT files
 
@@ -60,27 +60,32 @@ See `examples/bottleneck-1-ab.dot` for a dot-representation equivalent to the si
 
 ## Output
 
-Each computation produces two outputs: a tex file and a pdf file.
-The `tex` output is formatted using the template `latex/solution.template.tex`.
-The `pdf`output is generated using `pdflatex`.
+Each computation produces and prints whether the given autonmaton is controllable or not.
+For positive instances, it will also give a representation of the winning strategy.
+You can optionally select which format this is given via the `-t` argument (either "tex" or "plain", defaults to "tex"),
+and give the path to where the solution is written via the `-o` argument (defaults to stdout).
+
+For a pretty latex report use
+
+```
+cargo run -- -f examples/example1.tikz -o report.tex && pdflatex report.tex
+```
 
 The states of the NFA can be automatically reordered in order to make the generated reports more readable.
 Either topologically
-```cargo run -- -s topological -i dot -f examples/bottleneck-2-staged.dot```
+```cargo run -- -s topological -i dot examples/bottleneck-2-staged.dot```
 or alphabetically
-```cargo run -- -s alphabetical -i dot -f examples/bottleneck-2-staged.dot```
+```cargo run -- -s alphabetical -i dot examples/bottleneck-2-staged.dot```
 
-The tex conversion and pdf compilations can be (optionally) turned off.
-Also the tex processor can also be modified.
 Run 
 
 ```cargo run -- -help```
 
 for all details.
 
-##Perfs
+## Perfs
 
 ```cargo build --release```
-```./target/release/shepherd -s topological -i dot -f examples/bottleneck-2-staged.dot```
+```./target/release/shepherd -s topological -i dot examples/bottleneck-2-staged.dot```
 
 
