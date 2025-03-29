@@ -1,7 +1,6 @@
 use crate::nfa::Nfa;
 use crate::strategy::Strategy;
 use std::fmt;
-use std::fs;
 use tera::{Context, Tera};
 
 /// A solution to the population control problem.

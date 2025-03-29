@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
-use std::fs::{write, File};
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::Write;
+use std::io;
 use std::path::PathBuf;
-use std::process;
 mod coef;
 mod flow;
 mod graph;
@@ -105,7 +105,7 @@ fn main() {
         let mut out_writer = match args.output_path {
             Some(path) => {
                 // Open a file in write-only mode, returns `io::Result<File>`
-                let mut file = match File::create(&path) {
+                let file = match File::create(&path) {
                     Err(why) => panic!("couldn't create {}: {}", path.display(), why),
                     Ok(file) => file,
                 };
@@ -132,7 +132,7 @@ fn main() {
         };
 
         // Write the winning strategy to the output
-        write!(out_writer, "{}", output);
+        write!(out_writer, "{}", output).expect("Couldn’t write");
     }
 }
 
