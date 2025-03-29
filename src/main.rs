@@ -93,72 +93,49 @@ fn main() {
     let args = Args::parse();
 
 
-    match args.output_format {
-        OutputFormat::Tex => {
-            println!("Printing Tex");
-        }
-        OutputFormat::Plain => {
-            println!("plain text output");
-        }
-    }
-
-    // create a writer where we later print the output
-    let mut out_writer = match args.output_path {
-        Some(path) => {
-            // Open a file in write-only mode, returns `io::Result<File>`
-            let mut file = match File::create(&path) {
-                Err(why) => panic!("couldn't create {}: {}", path.display(), why),
-                Ok(file) => file,
-            };
-            Box::new(file) as Box<dyn Write>
-        },
-        None => {
-            Box::new(io::stdout()) as Box<dyn Write>
-        },
-    };
-
-
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
+    
+    // print the input automaton
+    println!("{}", nfa);
 
     let solution = solver::solve(&nfa);
 
+    // print the solution in any case
     println!("{}", solution);
  
-    // Write the winning strategy to the output
-    write!(out_writer, "{}", solution.maximal_winning_strategy);
-
-    if !args.no_tex_output {
-        //remove trailing path from filename
-        let filename = args.filename.split('/').last().unwrap();
-        let output_path_tex = format!("{}.solution.tex", filename);
-        let output_path_pdf = format!("{}.solution.pdf", filename);
-        let is_tikz = args.input_format == nfa::InputFormat::Tikz;
-        solution.generate_latex(
-            &output_path_tex,
-            if is_tikz { Some(&args.filename) } else { None },
-        );
-        println!("Solution written to tex file './{}'", output_path_tex);
-        if !args.no_pdf_output {
-            print!("\nRunning pdflatex...");
-            //run pdflatex on the generated file and redirect output to a log file
-            let output = process::Command::new(&args.latex_processor)
-                .arg("-interaction=nonstopmode")
-                .arg(&output_path_tex)
-                .output()
-                .expect("Failed to execute pdflatex");
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-            //check whether file output_path_pdf exists
-            if !std::path::Path::new(&output_path_pdf).exists() {
-                write("pdflatex_stdout.log", &output.stdout).expect("Failed to write stdout log");
-                write("pdflatex_stderr.log", &output.stderr).expect("Failed to write stderr log");
-                eprintln!(
-                "error occurred. Check pdflatex_stdout.log and pdflatex_stderr.log for details."
-            );
-                process::exit(1);
-            } else {
-                println!("Solution written to pdf file './{}'", output_path_pdf);
+    // only if the answer was positive, format the winning strategy
+    if solution.result {
+        // create a writer were we later print the output
+        let mut out_writer = match args.output_path {
+            Some(path) => {
+                // Open a file in write-only mode, returns `io::Result<File>`
+                let mut file = match File::create(&path) {
+                    Err(why) => panic!("couldn't create {}: {}", path.display(), why),
+                    Ok(file) => file,
+                };
+                Box::new(file) as Box<dyn Write>
+            },
+            None => {
+                Box::new(io::stdout()) as Box<dyn Write>
+            },
+        };
+    
+        // prepare output string
+        let output = match args.output_format {
+            OutputFormat::Tex => {
+                let is_tikz = args.input_format == nfa::InputFormat::Tikz;
+                let latex_content = solution.as_latex(
+                    if is_tikz { Some(&args.filename) } else { None },
+                );
+                format!("{}", latex_content)
             }
-        }
+            OutputFormat::Plain => {
+                format!("States: {}\n {}", nfa.states_str(),solution.maximal_winning_strategy)
+            }
+        };
+
+        // Write the winning strategy to the output
+        write!(out_writer, "{}", output);
     }
 }
 
