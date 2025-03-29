@@ -67,16 +67,6 @@ struct Args {
         '{:?}' sorts states topologically.\n", nfa::StateOrdering::Input, nfa::StateOrdering::Alphabetical, nfa::StateOrdering::Topological)
     )]
     state_ordering: nfa::StateOrdering,
-
-    //adds an explanation to the help message
-    #[arg(long, action, help = "Do not generate tex output")]
-    no_tex_output: bool,
-
-    #[arg(long, action, help = "Do not generate pdf output")]
-    no_pdf_output: bool,
-
-    #[arg(long, default_value = "pdflatex", help = "The latex processor to use")]
-    latex_processor: String,
 }
 
 fn main() {
