@@ -26,7 +26,10 @@ enum OutputFormat {
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// The path to the input file
+    #[arg(
+        value_name = "AUTOMATON_FILE",
+        help = "path to the input"
+    )]
     filename: String,
 
     #[arg(
@@ -34,7 +37,6 @@ struct Args {
         long = "from",
         value_enum,
         default_value = "tikz",
-        value_name = "AUTOMATON_FILE",
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
