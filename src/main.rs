@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::fs::write;
 use std::process;
 mod coef;
@@ -15,6 +15,13 @@ mod solver;
 mod strategy;
 use log::LevelFilter;
 
+
+#[derive(Debug,Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum OutputFormat {
+    Plain,
+    Tex,
+}
+
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -29,6 +36,16 @@ struct Args {
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
+    
+    #[arg(
+        value_enum,
+        short='t',
+        long="to",
+        default_value = "plain",
+        help = "The output format"
+    )]
+    output_format: OutputFormat,
+
 
     #[arg(
         short,
@@ -64,6 +81,16 @@ fn main() {
         .init();
 
     let args = Args::parse();
+
+
+    match args.output_format {
+        OutputFormat::Tex => {
+            println!("Printing Tex");
+        }
+        OutputFormat::Plain => {
+            println!("plain text output");
+        }
+    }
 
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
