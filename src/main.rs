@@ -17,8 +17,7 @@ mod solver;
 mod strategy;
 use log::LevelFilter;
 
-
-#[derive(Debug,Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputFormat {
     Plain,
     Tex,
@@ -31,18 +30,19 @@ struct Args {
     filename: String,
 
     #[arg(
-        short='f',
-        long="from",
+        short = 'f',
+        long = "from",
         value_enum,
         default_value = "tikz",
+        value_name = "AUTOMATON_FILE",
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
-    
+
     #[arg(
         value_enum,
-        short='t',
-        long="to",
+        short = 't',
+        long = "to",
         default_value = "plain",
         help = "The output format"
     )]
@@ -50,9 +50,9 @@ struct Args {
 
     /// path to write the strategy
     #[arg(
-        short='o',
-        long="output",
-        value_name = "STRATEGY_FILE",
+        short = 'o',
+        long = "output",
+        value_name = "OUTPUT_FILE",
         help = "where to write the strategy; defaults to stdout."
     )]
     output_path: Option<PathBuf>,
@@ -80,22 +80,26 @@ fn main() {
         .filter_level(LevelFilter::Info)
         .init();
 
+    // parse CLI arguments
     let args = Args::parse();
 
-
+    // parse the input file
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
-    
+
     // print the input automaton
     println!("{}", nfa);
 
+    // compute the solution
     let solution = solver::solve(&nfa);
 
-    // print the solution in any case
+    // print the solution in any case.
+    // This now only prints the status: controllable or not.
     println!("{}", solution);
- 
+
     // only if the answer was positive, format the winning strategy
     if solution.result {
-        // create a writer were we later print the output
+        // create a writer were we later print the output.
+        // This is either a file or simply stdout.
         let mut out_writer = match args.output_path {
             Some(path) => {
                 // Open a file in write-only mode, returns `io::Result<File>`
@@ -104,23 +108,24 @@ fn main() {
                     Ok(file) => file,
                 };
                 Box::new(file) as Box<dyn Write>
-            },
-            None => {
-                Box::new(io::stdout()) as Box<dyn Write>
-            },
+            }
+            None => Box::new(io::stdout()) as Box<dyn Write>,
         };
-    
+
         // prepare output string
         let output = match args.output_format {
             OutputFormat::Tex => {
                 let is_tikz = args.input_format == nfa::InputFormat::Tikz;
-                let latex_content = solution.as_latex(
-                    if is_tikz { Some(&args.filename) } else { None },
-                );
+                let latex_content =
+                    solution.as_latex(if is_tikz { Some(&args.filename) } else { None });
                 format!("{}", latex_content)
             }
             OutputFormat::Plain => {
-                format!("States: {}\n {}", nfa.states_str(),solution.maximal_winning_strategy)
+                format!(
+                    "States: {}\n {}",
+                    nfa.states_str(),
+                    solution.maximal_winning_strategy
+                )
             }
         };
 
