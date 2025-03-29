@@ -58,10 +58,6 @@ impl fmt::Display for Solution {
         } else {
             "uncontrollable"
         };
-        writeln!(f, "Answer: {}", answer)?;
-        writeln!(f, "\n\nAutomaton:\n{}\n\n", self.nfa)?;
-        writeln!(f, "Maximal winning random walk:\n")?;
-        writeln!(f, "States:\n\t{}", self.nfa.states_str())?;
-        writeln!(f, "\n{}", self.maximal_winning_strategy)
+        writeln!(f, "Answer: {}", answer)
     }
 }
