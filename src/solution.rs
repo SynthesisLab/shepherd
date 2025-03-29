@@ -12,7 +12,7 @@ pub struct Solution {
 }
 
 impl Solution {
-    pub fn generate_latex(&self, output_path: &str, tikz_path: Option<&str>) {
+    pub fn as_latex(&self, tikz_path: Option<&str>) -> String {
         let template_content = include_str!("../latex/solution.template.tex");
 
         // Create Tera instance
@@ -47,8 +47,7 @@ impl Solution {
 
         //Replace the utf8 symbol omega by \omega in therendered string
         let rendered = rendered.replace("ω", "w");
-        // Write to output file
-        fs::write(output_path, rendered).expect("Failed to write file");
+        rendered
     }
 }
 
