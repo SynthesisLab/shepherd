@@ -22,22 +22,13 @@ struct Args {
     filename: String,
 
     #[arg(
-        short='f',
-        long="from",
+        short,
+        long,
         value_enum,
         default_value = "tikz",
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
-
-    #[arg(
-        short='t',
-        long="to",
-        value_enum,
-        default_value = "tikz",
-        help = "The output format"
-    )]
-    output_format: nfa::InputFormat,
 
     #[arg(
         short,
