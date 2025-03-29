@@ -120,7 +120,7 @@ fn main() {
                 let is_tikz = args.input_format == nfa::InputFormat::Tikz;
                 let latex_content =
                     solution.as_latex(if is_tikz { Some(&args.filename) } else { None });
-                format!("{}", latex_content)
+                latex_content.to_string()
             }
             OutputFormat::Plain => {
                 format!(

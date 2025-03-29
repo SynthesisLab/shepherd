@@ -45,8 +45,7 @@ impl Solution {
             .expect("Template rendering failed");
 
         //Replace the utf8 symbol omega by \omega in therendered string
-        let rendered = rendered.replace("ω", "w");
-        rendered
+        rendered.replace("ω", "w")
     }
 }
 
