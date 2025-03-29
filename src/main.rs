@@ -1,5 +1,7 @@
 use clap::{Parser, ValueEnum};
-use std::fs::write;
+use std::fs::{write, File};
+use std::io::{self, Write};
+use std::path::PathBuf;
 use std::process;
 mod coef;
 mod flow;
@@ -46,6 +48,14 @@ struct Args {
     )]
     output_format: OutputFormat,
 
+    /// path to write the strategy
+    #[arg(
+        short='o',
+        long="output",
+        value_name = "STRATEGY_FILE",
+        help = "where to write the strategy; defaults to stdout."
+    )]
+    output_path: Option<PathBuf>,
 
     #[arg(
         short,
@@ -92,11 +102,30 @@ fn main() {
         }
     }
 
+    // create a writer where we later print the output
+    let mut out_writer = match args.output_path {
+        Some(path) => {
+            // Open a file in write-only mode, returns `io::Result<File>`
+            let mut file = match File::create(&path) {
+                Err(why) => panic!("couldn't create {}: {}", path.display(), why),
+                Ok(file) => file,
+            };
+            Box::new(file) as Box<dyn Write>
+        },
+        None => {
+            Box::new(io::stdout()) as Box<dyn Write>
+        },
+    };
+
+
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
     let solution = solver::solve(&nfa);
 
     println!("{}", solution);
+ 
+    // Write the winning strategy to the output
+    write!(out_writer, "{}", solution.maximal_winning_strategy);
 
     if !args.no_tex_output {
         //remove trailing path from filename
