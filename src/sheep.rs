@@ -100,6 +100,18 @@ impl Sheep {
                 .collect(),
         )
     }
+
+    // create a CSV representation of this sheep,
+    // as comma separated values, one for each state
+    pub fn as_csv(&self) -> String {
+        let content = self
+            .0
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        content
+    }
 }
 
 impl fmt::Display for Sheep {

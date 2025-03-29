@@ -378,6 +378,15 @@ impl Ideal {
         }
         ideal
     }
+    
+    // create a CSV representation of this ideal
+    pub fn as_csv(&self) -> Vec<String> {
+        let mut lines: Vec<String> = Vec::new();
+        for s in &self.0 {
+            lines.push(s.as_csv());
+        }
+        lines
+    }
 }
 
 #[cached]

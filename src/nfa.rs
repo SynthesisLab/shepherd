@@ -42,6 +42,11 @@ pub enum StateOrdering {
 }
 
 impl Nfa {
+    /// getter for the states attribute
+    pub fn states(&self) -> &Vec<String> {
+        &self.states
+    }
+
     #[allow(dead_code)]
     pub fn from_size(nb_states: usize) -> Self {
         Nfa {

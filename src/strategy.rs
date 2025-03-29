@@ -45,6 +45,19 @@ impl Strategy {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &Ideal)> {
         self.0.iter()
     }
+    
+    // create a CSV representation of this strategy.
+    pub fn as_csv(&self) -> String {
+        let mut lines: Vec<nfa::Letter> = Vec::new();
+
+        for (a,i) in &self.0 {
+            for s in i.as_csv() {
+                let l = format!("{a},{s}");
+                lines.push(l);
+            }
+        }
+        lines.join("\n")
+    }
 }
 
 impl fmt::Display for Strategy {

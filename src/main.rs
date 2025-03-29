@@ -21,6 +21,7 @@ use log::LevelFilter;
 enum OutputFormat {
     Plain,
     Tex,
+    Csv,
 }
 
 #[derive(clap::Parser, Debug)]
@@ -127,6 +128,12 @@ fn main() {
                     "States: {}\n {}",
                     nfa.states_str(),
                     solution.maximal_winning_strategy
+                )
+            }
+            OutputFormat::Csv => {
+                format!(
+                    "Σ, {}\n{}\n", nfa.states().join(","),
+                    solution.maximal_winning_strategy.as_csv()
                 )
             }
         };
