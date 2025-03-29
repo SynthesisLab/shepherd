@@ -29,8 +29,8 @@ struct Args {
     filename: String,
 
     #[arg(
-        short,
-        long,
+        short='f',
+        long="from",
         value_enum,
         default_value = "tikz",
         help = "The input format"
