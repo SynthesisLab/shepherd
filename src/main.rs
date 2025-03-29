@@ -1,6 +1,8 @@
-use clap::Parser;
-use std::fs::write;
-use std::process;
+use clap::{Parser, ValueEnum};
+use std::fs::File;
+use std::io::Write;
+use std::io;
+use std::path::PathBuf;
 mod coef;
 mod flow;
 mod graph;
@@ -15,20 +17,47 @@ mod solver;
 mod strategy;
 use log::LevelFilter;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum OutputFormat {
+    Plain,
+    Tex,
+}
+
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(short, long, help = "The path to the input file")]
+    #[arg(
+        value_name = "AUTOMATON_FILE",
+        help = "path to the input"
+    )]
     filename: String,
 
     #[arg(
-        short,
-        long,
+        short = 'f',
+        long = "from",
         value_enum,
         default_value = "tikz",
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
+
+    #[arg(
+        value_enum,
+        short = 't',
+        long = "to",
+        default_value = "plain",
+        help = "The output format"
+    )]
+    output_format: OutputFormat,
+
+    /// path to write the strategy
+    #[arg(
+        short = 'o',
+        long = "output",
+        value_name = "OUTPUT_FILE",
+        help = "where to write the strategy; defaults to stdout."
+    )]
+    output_path: Option<PathBuf>,
 
     #[arg(
         short,
@@ -40,16 +69,6 @@ struct Args {
         '{:?}' sorts states topologically.\n", nfa::StateOrdering::Input, nfa::StateOrdering::Alphabetical, nfa::StateOrdering::Topological)
     )]
     state_ordering: nfa::StateOrdering,
-
-    //adds an explanation to the help message
-    #[arg(long, action, help = "Do not generate tex output")]
-    no_tex_output: bool,
-
-    #[arg(long, action, help = "Do not generate pdf output")]
-    no_pdf_output: bool,
-
-    #[arg(long, default_value = "pdflatex", help = "The latex processor to use")]
-    latex_processor: String,
 }
 
 fn main() {
@@ -63,46 +82,57 @@ fn main() {
         .filter_level(LevelFilter::Info)
         .init();
 
+    // parse CLI arguments
     let args = Args::parse();
 
+    // parse the input file
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
+    // print the input automaton
+    println!("{}", nfa);
+
+    // compute the solution
     let solution = solver::solve(&nfa);
 
+    // print the solution in any case.
+    // This now only prints the status: controllable or not.
     println!("{}", solution);
 
-    if !args.no_tex_output {
-        //remove trailing path from filename
-        let filename = args.filename.split('/').last().unwrap();
-        let output_path_tex = format!("{}.solution.tex", filename);
-        let output_path_pdf = format!("{}.solution.pdf", filename);
-        let is_tikz = args.input_format == nfa::InputFormat::Tikz;
-        solution.generate_latex(
-            &output_path_tex,
-            if is_tikz { Some(&args.filename) } else { None },
-        );
-        println!("Solution written to tex file './{}'", output_path_tex);
-        if !args.no_pdf_output {
-            print!("\nRunning pdflatex...");
-            //run pdflatex on the generated file and redirect output to a log file
-            let output = process::Command::new(&args.latex_processor)
-                .arg("-interaction=nonstopmode")
-                .arg(&output_path_tex)
-                .output()
-                .expect("Failed to execute pdflatex");
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-            //check whether file output_path_pdf exists
-            if !std::path::Path::new(&output_path_pdf).exists() {
-                write("pdflatex_stdout.log", &output.stdout).expect("Failed to write stdout log");
-                write("pdflatex_stderr.log", &output.stderr).expect("Failed to write stderr log");
-                eprintln!(
-                "error occurred. Check pdflatex_stdout.log and pdflatex_stderr.log for details."
-            );
-                process::exit(1);
-            } else {
-                println!("Solution written to pdf file './{}'", output_path_pdf);
+    // only if the answer was positive, format the winning strategy
+    if solution.result {
+        // create a writer were we later print the output.
+        // This is either a file or simply stdout.
+        let mut out_writer = match args.output_path {
+            Some(path) => {
+                // Open a file in write-only mode, returns `io::Result<File>`
+                let file = match File::create(&path) {
+                    Err(why) => panic!("couldn't create {}: {}", path.display(), why),
+                    Ok(file) => file,
+                };
+                Box::new(file) as Box<dyn Write>
             }
-        }
+            None => Box::new(io::stdout()) as Box<dyn Write>,
+        };
+
+        // prepare output string
+        let output = match args.output_format {
+            OutputFormat::Tex => {
+                let is_tikz = args.input_format == nfa::InputFormat::Tikz;
+                let latex_content =
+                    solution.as_latex(if is_tikz { Some(&args.filename) } else { None });
+                latex_content.to_string()
+            }
+            OutputFormat::Plain => {
+                format!(
+                    "States: {}\n {}",
+                    nfa.states_str(),
+                    solution.maximal_winning_strategy
+                )
+            }
+        };
+
+        // Write the winning strategy to the output
+        write!(out_writer, "{}", output).expect("Couldn’t write");
     }
 }
 

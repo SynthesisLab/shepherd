@@ -1,7 +1,6 @@
 use crate::nfa::Nfa;
 use crate::strategy::Strategy;
 use std::fmt;
-use std::fs;
 use tera::{Context, Tera};
 
 /// A solution to the population control problem.
@@ -12,7 +11,7 @@ pub struct Solution {
 }
 
 impl Solution {
-    pub fn generate_latex(&self, output_path: &str, tikz_path: Option<&str>) {
+    pub fn as_latex(&self, tikz_path: Option<&str>) -> String {
         let template_content = include_str!("../latex/solution.template.tex");
 
         // Create Tera instance
@@ -46,9 +45,7 @@ impl Solution {
             .expect("Template rendering failed");
 
         //Replace the utf8 symbol omega by \omega in therendered string
-        let rendered = rendered.replace("ω", "w");
-        // Write to output file
-        fs::write(output_path, rendered).expect("Failed to write file");
+        rendered.replace("ω", "w")
     }
 }
 
@@ -59,10 +56,6 @@ impl fmt::Display for Solution {
         } else {
             "uncontrollable"
         };
-        writeln!(f, "Answer: {}", answer)?;
-        writeln!(f, "\n\nAutomaton:\n{}\n\n", self.nfa)?;
-        writeln!(f, "Maximal winning random walk:\n")?;
-        writeln!(f, "States:\n\t{}", self.nfa.states_str())?;
-        writeln!(f, "\n{}", self.maximal_winning_strategy)
+        writeln!(f, "Answer: {}", answer)
     }
 }
