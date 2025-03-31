@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use std::collections::HashSet; // for distinct method
 use std::collections::VecDeque;
 use std::fmt;
+use std::io::{self, Write};
 
 pub struct FlowSemigroup {
     //invariant: all flows have the same dimension
@@ -60,10 +61,10 @@ impl FlowSemigroup {
     ///non-deterministic product
     fn get_products(left: &Flow, right: &Flow, maximal_finite_coordinate: u16) -> HashSet<Flow> {
         debug_assert_eq!(left.nb_rows, right.nb_rows);
-        debug!("get_products\nleft\n{}\nright\n{}", left, right);
+        //debug!("get_products\nleft\n{}\nright\n{}", left, right);
         let dim = left.nb_rows;
         let omega_part = Flow::get_omega_entries(left, right);
-        debug!("omega part\n{}\n", omega_part);
+        //debug!("omega part\n{}\n", omega_part);
         let left = &mut left.clone();
         let right = &mut right.clone();
 
@@ -90,10 +91,10 @@ impl FlowSemigroup {
         flow_accumulator: &mut HashSet<Flow>,
     ) {
         debug_assert!(k < dim);
-        debug!(
+        /*debug!(
             "k={}\nleft\n{}\nright\n{}\ncurrent_flow\n{}\n\n",
             k, left, right, current_flow
-        );
+        );*/
         let left_edges = left.edges_to(k);
         let right_edges = right.edges_from(k);
         debug_assert!(k < dim);
@@ -122,17 +123,19 @@ impl FlowSemigroup {
         //todo compute left stuff once at a time with a single into_iter
         let left_coefs = left_edges.iter().map(|&(_, c)| c).collect::<Vec<_>>();
         let right_coefs = right_edges.iter().map(|&(_, c)| c).collect::<Vec<_>>();
+        /*
         debug!(
             "left_coefs\n\t{:?}\nright_coefs\n\t{:?}\n",
             left_coefs, right_coefs
-        );
+        );*/
         let left_indices = left_edges.into_iter().map(|(i, _)| i).collect::<Vec<_>>();
         //todo compute right stuff once at a time with a single into_iter
         let right_indices = right_edges.into_iter().map(|(j, _)| j).collect::<Vec<_>>();
+        /*
         debug!(
             "left_indices\n\t{:?}\nright_indices\n\t{:?}\n",
             left_indices, right_indices
-        );
+        );*/
         let all_indices = left_indices
             .iter()
             .enumerate()
@@ -147,8 +150,8 @@ impl FlowSemigroup {
             let mut left = left.clone();
             let mut right = right.clone();
             let mut current_flow = current_flow.clone();
-            debug!("k={}\ntransport\n{}\n", k, t);
-            debug!("current_flow before\n{}\n", current_flow);
+            //debug!("k={}\ntransport\n{}\n", k, t);
+            //debug!("current_flow before\n{}\n", current_flow);
             for ((subi, reali), (subj, realj)) in &all_indices {
                 let cf = current_flow.get(reali, realj);
                 let tij: Coef = t.get(&subi, &subj);
@@ -165,7 +168,7 @@ impl FlowSemigroup {
                     right.set(&k, realj, cr - tij);
                 }
             }
-            debug!("current_flow after\n{}\n", current_flow);
+            //debug!("current_flow after\n{}\n", current_flow);
             let k1 = k + 1;
             if k1 >= dim {
                 flow_accumulator.insert(current_flow);
@@ -194,12 +197,14 @@ impl FlowSemigroup {
         let mut processed = HashSet::<Flow>::new();
         while !to_process.is_empty() {
             let flow = to_process.pop_front().unwrap();
+            print!(".");
+            io::stdout().flush().unwrap();
             debug!(
                 "\nClose_by_product_and_iteration processing flow\n{}\n",
                 flow
             );
             if Self::is_covered(&flow, &processed) {
-                debug!("Skipped inqueue\n{}", flow);
+                //debug!("Skipped inqueue\n{}", flow);
                 continue;
             }
             processed.insert(flow.clone());
@@ -210,7 +215,7 @@ impl FlowSemigroup {
                 self.flows.insert(iteration.clone());
                 to_process.push_back(iteration);
             } else {
-                debug!("\n\nSkipped iteration\n{}", iteration);
+                //debug!("\n\nSkipped iteration\n{}", iteration);
             }
             {
                 let right_products = self

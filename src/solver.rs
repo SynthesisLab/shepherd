@@ -34,24 +34,27 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         );
         step += 1;
         let action_flows = compute_action_flows(&strategy, &edges);
-        print!("\nAction flows:\n{}", flows_to_string(&action_flows));
+        debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
+        println!("Computing semigroup");
         let semigroup = semigroup::FlowSemigroup::compute(&action_flows, dim as u16);
-        print!("Semigroup:\n{}", semigroup);
+        debug!("Semigroup:\n{}", semigroup);
+        println!("Computing winning ideal");
         let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
         winning_ideal.insert(&final_ideal);
         //non-omega stay below dim
         let dim16: u16 = dim.try_into().unwrap();
-        print!(
+        debug!(
             "Winning ideal for the path problem before rounding down\n{}",
             winning_ideal
         );
         winning_ideal.round_down(dim16, dim); //backed by the small constants theorem
-        print!(
+        debug!(
             "Winning ideal for the path problem before minimize\n{}",
             winning_ideal
         );
         winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
+        println!("Restricting strategy");
         let changed = strategy.restrict_to(winning_ideal, &edges);
         debug!("Strategy after restriction:\n{}", strategy);
         if !changed {
