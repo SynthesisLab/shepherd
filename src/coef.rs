@@ -1,6 +1,6 @@
 use std::fmt;
 use std::iter::Sum;
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Sub};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, PartialOrd, Ord)]
 pub enum Coef {
@@ -41,6 +41,26 @@ impl Add for Coef {
     type Output = Coef;
     fn add(self, other: Self) -> Self::Output {
         &self + &other
+    }
+}
+
+impl Sub for &Coef {
+    type Output = Coef;
+
+    fn sub(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Coef::Omega, _) => OMEGA,
+            (_, Coef::Omega) => C0,
+            (Coef::Value(x), Coef::Value(y)) => Coef::Value(x - y),
+        }
+    }
+}
+
+#[allow(clippy::op_ref)]
+impl Sub for Coef {
+    type Output = Coef;
+    fn sub(self, other: Self) -> Self::Output {
+        &self - &other
     }
 }
 

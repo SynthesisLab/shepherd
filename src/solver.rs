@@ -34,14 +34,22 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         );
         step += 1;
         let action_flows = compute_action_flows(&strategy, &edges);
-        debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
+        print!("\nAction flows:\n{}", flows_to_string(&action_flows));
         let semigroup = semigroup::FlowSemigroup::compute(&action_flows, dim as u16);
-        debug!("Semigroup:\n{}", semigroup);
+        print!("Semigroup:\n{}", semigroup);
         let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
         winning_ideal.insert(&final_ideal);
         //non-omega stay below dim
         let dim16: u16 = dim.try_into().unwrap();
+        print!(
+            "Winning ideal for the path problem before rounding down\n{}",
+            winning_ideal
+        );
         winning_ideal.round_down(dim16, dim); //backed by the small constants theorem
+        print!(
+            "Winning ideal for the path problem before minimize\n{}",
+            winning_ideal
+        );
         winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
         let changed = strategy.restrict_to(winning_ideal, &edges);
@@ -229,6 +237,7 @@ mod tests {
         nfa.add_transition("1", "2", "b");
         nfa.add_transition("1", "3", "b");
 
+        //chhose sides
         nfa.add_transition("2", "4", "a");
         nfa.add_transition("2", "5", "b");
         nfa.add_transition("3", "4", "b");

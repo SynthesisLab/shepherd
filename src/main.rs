@@ -269,14 +269,14 @@ mod tests {
         let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE_BUG12);
         nfa.sort(&nfa::StateOrdering::Topological);
         let solution = solver::solve(&nfa);
-        print!("{}", solution);
         let idealb = solution
             .maximal_winning_strategy
             .iter()
-            .filter(|x| x.0 == "a")
+            .filter(|x| x.0 == "b")
             .map(|x| x.1)
             .next()
             .unwrap();
+        println!("{}", idealb);
         assert!(idealb.contains(&Sheep::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
     }
 }
