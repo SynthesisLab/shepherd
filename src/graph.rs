@@ -37,8 +37,8 @@ impl Graph {
             .collect()
     }
 
-    pub(crate) fn dim(&self) -> u16 {
-        self.dim as u16
+    pub(crate) fn dim(&self) -> usize {
+        self.dim
     }
 }
 

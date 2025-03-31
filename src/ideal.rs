@@ -4,8 +4,10 @@ use crate::sheep::Sheep;
 use crate::{coef, partitions};
 use cached::proc_macro::cached;
 use itertools::Itertools;
+use log::debug;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
+use std::collections::VecDeque;
 use std::fmt;
 use std::sync::Mutex;
 use std::{collections::HashSet, vec::Vec};
@@ -38,34 +40,35 @@ type Herd = Vec<Sheep>;
 type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollection) -> Herd>;
 static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
-        let downward_closure = possible_coefs
-            .iter()
-            .map(|v| {
-                let coef = v
-                    .iter()
-                    .filter_map(|&x| match x {
-                        OMEGA => None,
-                        Coef::Value(c) => Some(c),
-                    })
-                    .next();
-                let is_omega = v.contains(&OMEGA);
-                match (is_omega, coef) {
-                    (false, None) => vec![C0],
-                    (true, None) => vec![OMEGA],
-                    (false, Some(c)) => (0..c + 1).map(Coef::Value).collect(),
-                    (true, Some(c)) => std::iter::once(OMEGA)
-                        .chain((0..c + 1).map(Coef::Value))
-                        .collect(),
-                }
-            })
-            .collect::<Vec<_>>();
-        downward_closure
-            .iter()
-            .multi_cartesian_product()
-            .map(|v| Sheep::from_vec(v.into_iter().cloned().collect()))
+        compute_possible_coefs(possible_coefs)
+            .map(|v| Sheep::from_vec(v))
             .collect()
     }))
 });
+
+fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Item = Vec<Coef>> {
+    possible_coefs
+        .iter()
+        .map(|v| {
+            let coef = v
+                .iter()
+                .filter_map(|&x| match x {
+                    OMEGA => None,
+                    Coef::Value(c) => Some(c),
+                })
+                .next();
+            let is_omega = v.contains(&OMEGA);
+            match (is_omega, coef) {
+                (false, None) => vec![C0],
+                (true, None) => vec![OMEGA],
+                (false, Some(c)) => (0..c + 1).map(Coef::Value).collect(),
+                (true, Some(c)) => std::iter::once(OMEGA)
+                    .chain((0..c + 1).map(Coef::Value))
+                    .collect(),
+            }
+        })
+        .multi_cartesian_product()
+}
 
 impl Ideal {
     /// Create an empty ideal.
@@ -147,8 +150,50 @@ impl Ideal {
                 }
             }
         }
-        new_sheeps.minimize();
-        self.0 = new_sheeps.0;
+        if changed {
+            new_sheeps.minimize();
+            self.0 = new_sheeps.0;
+        }
+        changed
+    }
+
+    pub(crate) fn restrict_to_preimage_of(
+        &mut self,
+        safe_target: &Ideal,
+        edges: &crate::graph::Graph,
+        dim: usize,
+        max_finite_value: u16,
+    ) -> bool {
+        let mut changed = false;
+        let mut new_sheeps = Ideal::new();
+        debug!(
+            "restrict_to_preimage_of\ndim: {}\nmax_finite_value: {}\nself\n{}\nsafe_target\n{}\nedges\n{}\n",
+            dim, max_finite_value, self, safe_target, edges
+        );
+        for sheep in self.0.iter() {
+            debug!("checking safety of\n{}", sheep);
+            if Self::is_safe(sheep, edges, safe_target, dim, max_finite_value) {
+                debug!("safe");
+                new_sheeps.insert(sheep);
+            } else {
+                changed = true;
+                let safe = Self::get_intersection_with_safe_ideal(
+                    sheep,
+                    edges,
+                    safe_target,
+                    max_finite_value,
+                );
+                debug!("restricted to\n{}", safe);
+                for other_sheep in safe.sheeps() {
+                    new_sheeps.insert(other_sheep);
+                }
+            }
+        }
+        if changed {
+            new_sheeps.minimize();
+            self.0 = new_sheeps.0;
+            debug!("new ideal\n{}", self);
+        }
         changed
     }
 
@@ -186,9 +231,13 @@ impl Ideal {
     ///        Ideal::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
     /// );
     /// ```
-    pub(crate) fn safe_pre_image(&self, edges: &crate::graph::Graph) -> Ideal {
-        let dim16 = edges.dim();
-        let dim = dim16 as usize;
+    pub(crate) fn safe_pre_image(
+        &self,
+        edges: &crate::graph::Graph,
+        maximal_finite_coordinate: u16,
+    ) -> Ideal {
+        debug!("safe_pre_image\nself\n{}\nedges\n{}", self, edges);
+        let dim = edges.dim();
         if dim == 0 || self.is_empty() {
             return Ideal::new();
         }
@@ -205,11 +254,12 @@ impl Ideal {
         //compute for every j the maximal finite coef appearing at index j, if exists
         //omega are turned to 1
         let max_finite_coordsj: Vec<u16> = (0..dim)
-            .map(|j| {
+            .map(|j: usize| {
                 self.0
                     .iter()
                     .map(|sheep| match sheep.get(j) {
-                        Coef::Omega => edges.dim(), //if we can really send omega, this will be managed by is_omega_possible
+                        Coef::Omega => maximal_finite_coordinate,
+                        //if we can really send omega, this will be managed by is_omega_possible
                         Coef::Value(c) => c,
                     })
                     .max()
@@ -217,14 +267,13 @@ impl Ideal {
             })
             .collect::<Vec<_>>();
 
-        let dim16 = dim as u16;
         let max_finite_coordsi = (0..dim)
             .map(|i| {
                 {
                     edges
                         .get_successors(i)
                         .iter()
-                        .map(|&j| std::cmp::min(dim16, max_finite_coordsj[j]))
+                        .map(|&j| std::cmp::min(maximal_finite_coordinate, max_finite_coordsj[j]))
                         .max()
                         .unwrap_or(0)
                 }
@@ -254,7 +303,9 @@ impl Ideal {
         let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
         candidates
             .par_iter()
-            .filter(|&candidate| self.is_safe_with_roundup(candidate, edges))
+            .filter(|&candidate| {
+                self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
+            })
             .collect::<HashSet<_>>()
             .iter()
             .for_each(|c| {
@@ -265,6 +316,53 @@ impl Ideal {
         result
     }
 
+    /* naive exponential impl of  get_intersection_with_safe_ideal*/
+    fn get_intersection_with_safe_ideal(
+        sheep: &Sheep,
+        edges: &crate::graph::Graph,
+        safe_target: &Ideal,
+        maximal_finite_value: u16,
+    ) -> Ideal {
+        /*
+        println!(
+            "get_intersection_with_safe_ideal\nsheep: {}\nsafe_target\n{}\nedges\n{}",
+            sheep, safe_target, edges
+        ); */
+        let mut result = Ideal::new();
+        let mut to_process: VecDeque<Sheep> = vec![sheep.clone()].into_iter().collect();
+        let mut processed = HashSet::<Sheep>::new();
+        while !to_process.is_empty() {
+            let flow = to_process.pop_front().unwrap();
+            //print!("Processing {}...", flow);
+            if result.contains(&flow) {
+                //println!("...already included");
+                continue;
+            }
+            if processed.contains(&flow) {
+                //println!("...already processed");
+                continue;
+            }
+            processed.insert(flow.clone());
+            if Self::is_safe(sheep, edges, safe_target, sheep.len(), maximal_finite_value) {
+                //println!("...safe");
+                result.insert(sheep);
+            } else {
+                //println!("...unsafe");
+                flow.iter().enumerate().for_each(|(i, &ci)| {
+                    if ci != C0 {
+                        let smaller = flow.clone_and_decrease(i, maximal_finite_value);
+                        if !processed.contains(&smaller) {
+                            //println!("adding smaller {} to queue", smaller);
+                            to_process.push_back(smaller);
+                        }
+                    }
+                });
+            }
+        }
+        result.minimize();
+        result
+    }
+
     #[allow(dead_code)]
     //below is a sad story: an optimized version of safe_pre_image which is extremely slow
     fn safe_pre_image_from(
@@ -272,12 +370,13 @@ impl Ideal {
         candidate: &Sheep,
         edges: &crate::graph::Graph,
         accumulator: &mut Ideal,
+        maximal_finite_coordinate: u16,
     ) {
         if accumulator.contains(candidate) {
             //println!("{} already in ideal", candidate);
             return;
         }
-        if self.is_safe_with_roundup(candidate, edges) {
+        if self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate) {
             //println!("{} inserted", candidate);
             accumulator.insert(candidate);
             return;
@@ -294,17 +393,31 @@ impl Ideal {
                 loop {
                     if c <= 2 {
                         candidate_copy.set(i, Coef::Value(c));
-                        self.safe_pre_image_from(&candidate_copy, edges, accumulator);
+                        self.safe_pre_image_from(
+                            &candidate_copy,
+                            edges,
+                            accumulator,
+                            maximal_finite_coordinate,
+                        );
                         candidate_copy.set(i, ci);
                         break;
                     } else {
                         candidate_copy.set(i, Coef::Value(c / 2));
-                        if !self.is_safe_with_roundup(&candidate_copy, edges) {
+                        if !self.is_safe_with_roundup(
+                            &candidate_copy,
+                            edges,
+                            maximal_finite_coordinate,
+                        ) {
                             c /= 2;
                         } else {
                             accumulator.insert(&candidate_copy);
                             candidate_copy.set(i, Coef::Value(c));
-                            self.safe_pre_image_from(&candidate_copy, edges, accumulator);
+                            self.safe_pre_image_from(
+                                &candidate_copy,
+                                edges,
+                                accumulator,
+                                maximal_finite_coordinate,
+                            );
                             candidate_copy.set(i, ci);
                             break;
                         }
@@ -323,9 +436,13 @@ impl Ideal {
     /// There is a roundup operation: any constant larger than the dimension appearing in a successor configuration
     /// is considered as omega.
     ///
-    fn is_safe_with_roundup(&self, candidate: &Sheep, edges: &crate::graph::Graph) -> bool {
+    fn is_safe_with_roundup(
+        &self,
+        candidate: &Sheep,
+        edges: &crate::graph::Graph,
+        maximal_finite_coordinate: u16,
+    ) -> bool {
         let dim = edges.dim() as usize;
-        let max_finite_value = edges.dim();
 
         //if we lose some sheep, forget about it
         let lose_sheep =
@@ -334,7 +451,7 @@ impl Ideal {
             return false;
         }
 
-        let image: Ideal = Self::get_image(dim, candidate, edges, max_finite_value);
+        let image: Ideal = Self::get_image(dim, candidate, edges, maximal_finite_coordinate);
         //println!("image\n{}", &image);
         let answer = image.sheeps().all(|x| self.contains(x));
         answer
@@ -416,6 +533,18 @@ impl Ideal {
         }
         lines
     }
+
+    fn is_safe(
+        sheep: &Sheep,
+        edges: &crate::graph::Graph,
+        safe_target: &Ideal,
+        dim: usize,
+        max_finite_value: u16,
+    ) -> bool {
+        let image: Ideal = Self::get_image(dim, sheep, edges, max_finite_value);
+        let result = image.sheeps().all(|other| safe_target.contains(other));
+        result
+    }
 }
 
 #[cached]
@@ -448,9 +577,13 @@ fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Sheep> {
 
 impl fmt::Display for Ideal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut vec: Vec<String> = self.0.iter().map(|x| x.to_string()).collect();
-        vec.sort();
-        writeln!(f, "\t{}", vec.join("\n\t"))
+        if self.is_empty() {
+            writeln!(f, "empty ideal")
+        } else {
+            let mut vec: Vec<String> = self.0.iter().map(|x| x.to_string()).collect();
+            vec.sort();
+            writeln!(f, "\t{}", vec.join("\n\t"))
+        }
     }
 }
 
@@ -540,47 +673,54 @@ mod test {
     //test issafe
     #[test]
     fn is_safe() {
-        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
+        let dim = 3;
+        let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, C1, C0], &[C0, C0, C1]]);
         let candidate = Sheep::from_vec(vec![C1, C0, C0]);
-        assert!(ideal.is_safe_with_roundup(&candidate, &edges));
+        assert!(ideal.is_safe_with_roundup(&candidate, &edges, dim as u16));
     }
 
     #[test]
     fn is_safe2() {
+        let dim = 3;
         let c4 = Coef::Value(4);
-        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c4, C0], &[C0, C0, c4]]);
         let candidate = Sheep::from_vec(vec![c4, C0, C0]);
-        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges, dim as u16));
     }
 
     #[test]
     fn is_safe3() {
+        let dim = 3;
         let c3 = Coef::Value(3);
-        let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
+        let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C2, C1], &[C0, C1, C2], &[C0, C0, c3]]);
         let candidate = Sheep::from_vec(vec![c3, C0, C0]);
-        assert!(ideal.is_safe_with_roundup(&candidate, &edges));
+        assert!(ideal.is_safe_with_roundup(&candidate, &edges, dim as u16));
     }
 
     #[test]
     fn is_not_safe() {
+        let dim = 3;
         let c3 = Coef::Value(3);
         let c4 = Coef::Value(4);
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal = Ideal::from_vecs(&[&[C0, c3, C0], &[C0, C0, c3]]);
         let candidate = Sheep::from_vec(vec![c4, C0, C0]);
-        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges, dim as u16));
     }
 
     #[test]
     fn pre_image1() {
-        let edges =
-            crate::graph::Graph::from_vec(4, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+        let dim = 4;
+        let edges = crate::graph::Graph::from_vec(
+            dim,
+            vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)],
+        );
         let ideal0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA]]);
 
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges, dim as u16);
         assert_eq!(
             pre_image0,
             Ideal::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
@@ -589,10 +729,13 @@ mod test {
 
     #[test]
     fn pre_image1bis() {
-        let edges =
-            crate::graph::Graph::from_vec(4, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+        let dim = 4;
+        let edges = crate::graph::Graph::from_vec(
+            dim,
+            vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)],
+        );
         let ideal1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
-        let pre_image1 = ideal1.safe_pre_image(&edges);
+        let pre_image1 = ideal1.safe_pre_image(&edges, dim as u16);
         assert_eq!(
             pre_image1,
             Ideal::from_vecs(&[
@@ -607,31 +750,33 @@ mod test {
     fn pre_image2() {
         let edges = crate::graph::Graph::from_vec(3, vec![(0, 1), (0, 2)]);
         let ideal0 = Ideal::from_vecs(&[&[C0, C0, OMEGA], &[C0, OMEGA, C0]]);
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges, 3);
         assert_eq!(pre_image0, Ideal::from_vecs(&[&[C1, C0, C0]]));
     }
 
     #[test]
     fn pre_image3() {
-        let edges = crate::graph::Graph::from_vec(4, vec![(2, 3)]);
+        let dim = 4;
+        let edges = crate::graph::Graph::from_vec(dim, vec![(2, 3)]);
         let ideal0 = Ideal::from_vecs(&[
             &[C0, C0, C0, OMEGA],
             &[C0, C0, OMEGA, C0],
             &[C0, OMEGA, C0, C0],
             &[OMEGA, C0, C0, C0],
         ]);
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges, dim as u16);
         assert_eq!(pre_image0, Ideal::from_vecs(&[&[C0, C0, OMEGA, C0]]));
     }
 
     #[test]
     fn pre_image4() {
+        let dim = 6;
         let ideal0 = Ideal::from_vecs(&[
             &[OMEGA, OMEGA, C0, OMEGA, OMEGA, C0],
             &[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0],
         ]);
         let edges = crate::graph::Graph::from_vec(
-            6,
+            dim,
             vec![
                 (0, 0),
                 (0, 1),
@@ -643,7 +788,7 @@ mod test {
                 (5, 5),
             ],
         );
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges, dim as u16);
         assert_eq!(
             pre_image0,
             Ideal::from_vecs(&[&[OMEGA, OMEGA, OMEGA, C0, OMEGA, C0]])
@@ -652,6 +797,8 @@ mod test {
 
     #[test]
     fn pre_image5() {
+        let dim = 6;
+
         /*preimage of
                ( ω , ω , _ , ω , ω , _ )
                ( ω , ω , ω , _ , ω , _ )
@@ -673,7 +820,7 @@ mod test {
             6,
             vec![(0, 0), (1, 2), (1, 3), (3, 4), (2, 5), (4, 4), (5, 5)],
         );
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let pre_image0 = ideal0.safe_pre_image(&edges, dim as u16);
         assert_eq!(
             pre_image0,
             Ideal::from_vecs(&[&[OMEGA, C1, C0, OMEGA, OMEGA, C0]])
@@ -682,19 +829,21 @@ mod test {
 
     #[test]
     fn is_safe6() {
+        let dim = 5;
         let c5 = Coef::Value(5);
-        let edges = crate::graph::Graph::from_vec(5, vec![(0, 1), (0, 2), (0, 3)]);
+        let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2), (0, 3)]);
         let ideal = Ideal::from_vecs(&[
             &[C0, OMEGA, OMEGA, C0, OMEGA],
             &[C0, C0, OMEGA, OMEGA, OMEGA],
             &[C0, OMEGA, C0, OMEGA, OMEGA],
         ]);
         let candidate = Sheep::from_vec(vec![c5, C0, C0, C0, C0]);
-        assert!(!ideal.is_safe_with_roundup(&candidate, &edges));
+        assert!(!ideal.is_safe_with_roundup(&candidate, &edges, dim as u16));
     }
 
     #[test]
     fn pre_image6() {
+        let dim = 5;
         /*preimage of
                ( _ , _ , _ , ω , _ )
                ( _ , _ , ω , _ , ω )
@@ -713,8 +862,8 @@ mod test {
             &[C0, OMEGA, OMEGA, C0, C0],
             &[OMEGA, C0, C0, C0, C0],
         ]);
-        let edges = crate::graph::Graph::from_vec(5, vec![(0, 1), (0, 2), (0, 4)]);
-        let pre_image0 = ideal0.safe_pre_image(&edges);
+        let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2), (0, 4)]);
+        let pre_image0 = ideal0.safe_pre_image(&edges, dim as u16);
         assert_eq!(pre_image0, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
 }

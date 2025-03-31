@@ -33,14 +33,16 @@ impl Strategy {
         &mut self,
         safe: Ideal,
         edges_per_letter: &HashMap<nfa::Letter, Graph>,
+        maximal_finite_value: u16,
     ) -> bool {
         let mut result = false;
         for (a, ideal) in self.0.iter_mut() {
             print!(".");
             io::stdout().flush().unwrap();
             let edges = edges_per_letter.get(a).unwrap();
-            let very_safe = safe.safe_pre_image(edges);
-            result |= ideal.restrict_to(&very_safe);
+            let safe_pre_image = safe.safe_pre_image(edges, maximal_finite_value);
+            result |= ideal.restrict_to(&safe_pre_image);
+            //result |= ideal.restrict_to_preimage_of(&safe, &edges, dim, maximal_finite_value);
         }
         result
     }

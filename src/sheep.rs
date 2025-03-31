@@ -189,6 +189,24 @@ impl Sheep {
             self.0[i] += x.0[i];
         }
     }
+
+    pub(crate) fn clone_and_decrease(&self, i: usize, maximal_finite_value: u16) -> Sheep {
+        let mut result = self.clone();
+        let c = result.0[i];
+        debug_assert!(c != Coef::Value(0));
+        match c {
+            Coef::Omega => {
+                result.0[i] = Coef::Value(maximal_finite_value);
+            }
+            Coef::Value(0) => {
+                panic!("Cannot decrease zero");
+            }
+            Coef::Value(x) => {
+                result.0[i] = Coef::Value(std::cmp::min(x - 1, maximal_finite_value));
+            }
+        }
+        result
+    }
 }
 
 impl fmt::Display for Sheep {

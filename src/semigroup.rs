@@ -199,7 +199,7 @@ impl FlowSemigroup {
             let flow = to_process.pop_front().unwrap();
             print!(".");
             io::stdout().flush().unwrap();
-            debug!(
+            println!(
                 "\nClose_by_product_and_iteration processing flow\n{}\n",
                 flow
             );

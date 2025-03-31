@@ -24,6 +24,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
     let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
     let mut result = true;
     let mut step = 1;
+    let maximal_finite_value = dim as u16;
     while result {
         //convert strategy to flows
         info!(
@@ -36,18 +37,17 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         let action_flows = compute_action_flows(&strategy, &edges);
         debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
         println!("Computing semigroup");
-        let semigroup = semigroup::FlowSemigroup::compute(&action_flows, dim as u16);
+        let semigroup = semigroup::FlowSemigroup::compute(&action_flows, maximal_finite_value);
         debug!("Semigroup:\n{}", semigroup);
         println!("Computing winning ideal");
         let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
         winning_ideal.insert(&final_ideal);
         //non-omega stay below dim
-        let dim16: u16 = dim.try_into().unwrap();
         debug!(
             "Winning ideal for the path problem before rounding down\n{}",
             winning_ideal
         );
-        winning_ideal.round_down(dim16, dim); //backed by the small constants theorem
+        winning_ideal.round_down(maximal_finite_value, dim); //backed by the small constants theorem
         debug!(
             "Winning ideal for the path problem before minimize\n{}",
             winning_ideal
@@ -55,7 +55,7 @@ pub fn solve(nfa: &nfa::Nfa) -> Solution {
         winning_ideal.minimize();
         debug!("Winning ideal for the path problem:\n{}", winning_ideal);
         println!("Restricting strategy");
-        let changed = strategy.restrict_to(winning_ideal, &edges);
+        let changed = strategy.restrict_to(winning_ideal, &edges, maximal_finite_value);
         debug!("Strategy after restriction:\n{}", strategy);
         if !changed {
             break;
