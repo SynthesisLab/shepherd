@@ -1,17 +1,34 @@
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Sub};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, PartialOrd, Ord)]
+pub type coef = u8;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Coef {
-    Value(u16),
+    Value(coef),
     Omega,
 }
+
+impl Hash for Coef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_coef().hash(state);
+    }
+}
+
 impl Coef {
-    pub(crate) fn round_up(&self, max_finite_value: u16) -> Coef {
+    pub(crate) fn round_up(&self, max_finite_value: coef) -> Coef {
         match self {
             Coef::Value(x) if *x > max_finite_value => Coef::Omega,
             _ => *self,
+        }
+    }
+
+    pub fn as_coef(&self) -> coef {
+        match self {
+            Coef::Value(v) => *v,
+            Coef::Omega => coef::MAX, // associate 42 as the value of Omega
         }
     }
 }

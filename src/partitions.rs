@@ -1,11 +1,12 @@
+use crate::coef::coef;
 use cached::proc_macro::cached;
 use std::vec::Vec;
 
 /* get all partitions of non-negative integers of length len and sum equal to x.
 E.g. if len = 3 and x = 4 returns [[4,0,0], [3,1,0], [3,0,1], [2,2,0], [2,1,1], ...., [0,0,4]]
  */
-pub fn get_partitions(x: u16, len: usize) -> Vec<Vec<u16>> {
-    let mut result: Vec<Vec<u16>> = Vec::new();
+pub fn get_partitions(x: coef, len: usize) -> Vec<Vec<coef>> {
+    let mut result: Vec<Vec<coef>> = Vec::new();
     if len > 0 {
         let mut current = vec![0; len];
         current[0] = x;
@@ -14,14 +15,14 @@ pub fn get_partitions(x: u16, len: usize) -> Vec<Vec<u16>> {
     result
 }
 
-fn get_partitions_rec(start_index: usize, current: &mut Vec<u16>, result: &mut Vec<Vec<u16>>) {
+fn get_partitions_rec(start_index: usize, current: &mut Vec<coef>, result: &mut Vec<Vec<coef>>) {
     result.push(current.clone());
     if start_index + 1 >= current.len() {
         return;
     }
     while current[start_index] > 0 {
         current[start_index] -= 1;
-        current[start_index + 1] = current.iter().skip(start_index + 1).sum::<u16>() + 1;
+        current[start_index + 1] = current.iter().skip(start_index + 1).sum::<coef>() + 1;
         (start_index + 2..current.len()).for_each(|i| {
             current[i] = 0;
         });
@@ -30,14 +31,19 @@ fn get_partitions_rec(start_index: usize, current: &mut Vec<u16>, result: &mut V
 }
 
 #[cached]
-pub(crate) fn get_transports(c: u16, len: usize) -> Vec<Vec<u16>> {
+pub(crate) fn get_transports(c: coef, len: usize) -> Vec<Vec<coef>> {
     debug_assert!(len > 0);
-    let mut result: Vec<Vec<u16>> = Vec::new();
+    let mut result: Vec<Vec<coef>> = Vec::new();
     get_transports_rec(c, vec![0; len], 0, &mut result);
     result
 }
 
-fn get_transports_rec(c: u16, mut current: Vec<u16>, pointer: usize, result: &mut Vec<Vec<u16>>) {
+fn get_transports_rec(
+    c: coef,
+    mut current: Vec<coef>,
+    pointer: usize,
+    result: &mut Vec<Vec<coef>>,
+) {
     //invariant: current is 0 on indices >= pointer
     if c == 0 {
         result.push(current);

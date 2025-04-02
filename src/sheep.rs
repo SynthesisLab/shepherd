@@ -1,4 +1,4 @@
-use crate::coef::{Coef, OMEGA};
+use crate::coef::{coef, Coef, OMEGA};
 use std::cmp::min;
 use std::fmt;
 use std::iter::Sum;
@@ -126,7 +126,7 @@ impl Sheep {
     #[allow(dead_code)]
     pub(crate) fn from_non_zero_coefs(
         dim: usize,
-        partition: &[u16],
+        partition: &[coef],
         predecessors: &[usize],
     ) -> Sheep {
         let mut result = vec![Coef::Value(0); dim];
@@ -141,7 +141,7 @@ impl Sheep {
         succ.iter().all(|&i| self.get(i) == OMEGA)
     }
 
-    pub(crate) fn round_up(&mut self, max_finite_value: u16) -> Sheep {
+    pub(crate) fn round_up(&mut self, max_finite_value: coef) -> Sheep {
         Sheep(
             self.0
                 .iter()
@@ -150,7 +150,7 @@ impl Sheep {
         )
     }
 
-    pub(crate) fn round_down(&mut self, upper_bound: u16, dim: usize) {
+    pub(crate) fn round_down(&mut self, upper_bound: coef, dim: usize) {
         for i in 0..dim {
             if let Coef::Value(x) = self.get(i) {
                 if x > upper_bound {
@@ -160,7 +160,7 @@ impl Sheep {
         }
     }
 
-    pub(crate) fn some_finite_coordinate_is_larger_than(&self, upper_bound: u16) -> bool {
+    pub(crate) fn some_finite_coordinate_is_larger_than(&self, upper_bound: coef) -> bool {
         self.0
             .iter()
             .any(|&x| x < OMEGA && x > Coef::Value(upper_bound))
@@ -190,7 +190,7 @@ impl Sheep {
         }
     }
 
-    pub(crate) fn clone_and_decrease(&self, i: usize, maximal_finite_value: u16) -> Sheep {
+    pub(crate) fn clone_and_decrease(&self, i: usize, maximal_finite_value: coef) -> Sheep {
         let mut result = self.clone();
         let c = result.0[i];
         debug_assert!(c != Coef::Value(0));

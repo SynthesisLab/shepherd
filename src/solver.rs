@@ -1,5 +1,4 @@
-use crate::coef::C0;
-use crate::coef::OMEGA;
+use crate::coef::{coef, C0, OMEGA};
 use crate::flow;
 use crate::graph::Graph;
 use crate::nfa;
@@ -7,66 +6,147 @@ use crate::semigroup;
 use crate::sheep::Sheep;
 use crate::solution::Solution;
 use crate::strategy::Strategy;
+use clap::ValueEnum;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-pub fn solve(nfa: &nfa::Nfa) -> Solution {
+#[derive(Debug, Clone, ValueEnum)]
+pub enum SolverOutput {
+    YesNo,
+    Strategy,
+}
+
+pub fn solve(nfa: &nfa::Nfa, output: &SolverOutput) -> Solution {
+    match output {
+        SolverOutput::Strategy => compute_maximal_winning_strategy(nfa),
+        SolverOutput::YesNo => compute_control_problem_solution(nfa),
+    }
+}
+
+fn compute_control_problem_solution(nfa: &nfa::Nfa) -> Solution {
     let dim = nfa.nb_states();
     let source = get_omega_sheep(
         dim,
         &nfa.initial_states().iter().cloned().collect::<Vec<_>>(),
     );
     let final_states = nfa.final_states();
-    let final_ideal = get_omega_sheep(dim, &final_states);
 
     let edges = nfa.get_edges();
     let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
-    let mut result = true;
+
+    for maximal_finite_value in 1..dim as coef {
+        let mut step = 1;
+        loop {
+            //convert strategy to flows
+            info!(
+                "Looking for a winning strategy using maximal finite_value {} step {} states\n{}\ncurrent strategy\n{}",
+                maximal_finite_value,
+                step,
+                nfa.states_str(),
+                strategy
+            );
+            step += 1;
+
+            let changed = update_strategy(
+                dim,
+                &mut strategy,
+                &final_states,
+                &edges,
+                maximal_finite_value,
+            );
+            let result = strategy.is_defined_on(&source);
+
+            if !changed || !result {
+                break;
+            }
+        }
+        if strategy.is_defined_on(&source) {
+            break;
+        }
+    }
+    Solution {
+        nfa: nfa.clone(),
+        result: Some(strategy.is_defined_on(&source)),
+        maximal_winning_strategy: strategy,
+    }
+}
+
+fn compute_maximal_winning_strategy(nfa: &nfa::Nfa) -> Solution {
+    let dim = nfa.nb_states();
+    let maximal_finite_value = dim as coef;
+    let final_states = nfa.final_states();
+
+    let edges = nfa.get_edges();
+    let mut strategy = Strategy::get_maximal_strategy(dim, &nfa.get_alphabet());
+
     let mut step = 1;
-    let maximal_finite_value = dim as u16;
-    while result {
+    loop {
         //convert strategy to flows
         info!(
-            "Step {} states\n{}\nstrategy\n{}",
+            "Computing the maximal winning strategy step {} states\n{}\ncurrent strategy\n{}",
             step,
             nfa.states_str(),
             strategy
         );
         step += 1;
-        let action_flows = compute_action_flows(&strategy, &edges);
-        debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
-        println!("Computing semigroup");
-        let semigroup = semigroup::FlowSemigroup::compute(&action_flows, maximal_finite_value);
-        debug!("Semigroup:\n{}", semigroup);
-        println!("Computing winning ideal");
-        let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
-        winning_ideal.insert(&final_ideal);
-        //non-omega stay below dim
-        debug!(
-            "Winning ideal for the path problem before rounding down\n{}",
-            winning_ideal
+
+        let changed = update_strategy(
+            dim,
+            &mut strategy,
+            &final_states,
+            &edges,
+            maximal_finite_value,
         );
-        winning_ideal.round_down(maximal_finite_value, dim); //backed by the small constants theorem
-        debug!(
-            "Winning ideal for the path problem before minimize\n{}",
-            winning_ideal
-        );
-        winning_ideal.minimize();
-        debug!("Winning ideal for the path problem:\n{}", winning_ideal);
-        println!("Restricting strategy");
-        let changed = strategy.restrict_to(winning_ideal, &edges, maximal_finite_value);
-        debug!("Strategy after restriction:\n{}", strategy);
+
         if !changed {
             break;
         }
-        result = strategy.is_defined_on(&source);
     }
     Solution {
         nfa: nfa.clone(),
-        result,
+        result: None,
         maximal_winning_strategy: strategy,
     }
+}
+
+fn update_strategy(
+    dim: usize,
+    strategy: &mut Strategy,
+    final_states: &[usize],
+    edges: &HashMap<String, Graph>,
+    maximal_finite_value: u8,
+) -> bool {
+    let final_ideal = get_omega_sheep(dim, &final_states);
+    let action_flows = compute_action_flows(&strategy, &edges);
+    debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
+    debug!(
+        "Computing semigroup with maximal_finite_value {}",
+        maximal_finite_value
+    );
+    let semigroup = semigroup::FlowSemigroup::compute(&action_flows, maximal_finite_value);
+    debug!("Semigroup:\n{}", semigroup);
+    debug!("Computing winning ideal");
+    let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
+    winning_ideal.insert(&final_ideal);
+    //non-omega stay below dim
+    /*
+    debug!(
+        "Winning ideal for the path problem before rounding down\n{}",
+        winning_ideal
+    );*/
+    winning_ideal.round_down(maximal_finite_value, dim); //backed by the small constants theorem
+                                                         /*
+                                                         debug!(
+                                                             "Winning ideal for the path problem before minimize\n{}",
+                                                             winning_ideal
+                                                         );*/
+    winning_ideal.minimize();
+    debug!("Winning ideal for the path problem:\n{}", winning_ideal);
+    debug!("Restricting strategy");
+    let changed = strategy.restrict_to(winning_ideal, &edges, maximal_finite_value);
+    debug!("Strategy after restriction:\n{}", strategy);
+    changed
 }
 
 fn get_omega_sheep(dim: usize, states: &[usize]) -> Sheep {
@@ -185,8 +265,8 @@ mod tests {
         nfa.add_transition_by_index1(0, 0, 'a');
         nfa.add_transition_by_index1(0, 1, 'a');
         nfa.add_transition_by_index1(1, 1, 'a');
-        let solution = solve(&nfa);
-        assert_eq!(solution.result, true);
+        let solution = solve(&nfa, &SolverOutput::YesNo);
+        assert_eq!(solution.result.unwrap_or(false), true);
         assert_eq!(
             solution.maximal_winning_strategy,
             Strategy::get_maximal_strategy(2, &["a"])
@@ -202,8 +282,8 @@ mod tests {
         nfa.add_transition_by_index1(0, 1, 'a');
         nfa.add_transition_by_index1(0, 2, 'a');
         nfa.add_transition_by_index1(1, 2, 'a');
-        let solution = solve(&nfa);
-        assert!(!solution.result);
+        let solution = solve(&nfa, &SolverOutput::YesNo);
+        assert!(!solution.result.unwrap_or(false));
     }
 
     #[test]
@@ -215,9 +295,9 @@ mod tests {
         nfa.add_transition_by_index1(1, 1, 'a');
         nfa.add_transition_by_index1(0, 2, 'a');
         nfa.add_transition_by_index1(2, 2, 'a');
-        let solution = solve(&nfa);
+        let solution = solve(&nfa, &SolverOutput::YesNo);
         print!("{}", solution);
-        assert_eq!(solution.result, false);
+        assert_eq!(solution.result.unwrap_or(false), false);
     }
 
     #[test]
@@ -246,8 +326,8 @@ mod tests {
         nfa.add_transition("3", "4", "b");
         nfa.add_transition("3", "5", "a");
 
-        let solution = solve(&nfa);
+        let solution = solve(&nfa, &SolverOutput::YesNo);
         print!("{}", solution);
-        assert_eq!(solution.result, true);
+        assert_eq!(solution.result.unwrap_or(false), true);
     }
 }

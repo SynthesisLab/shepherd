@@ -1,8 +1,6 @@
-use crate::coef::Coef;
-use crate::coef::OMEGA;
+use crate::coef::{coef, Coef, OMEGA};
 use crate::flow::Flow;
 use crate::ideal;
-use crate::nfa;
 use cached::proc_macro::cached;
 use itertools::Itertools;
 use log::debug;
@@ -24,7 +22,7 @@ impl FlowSemigroup {
         }
     }
 
-    pub fn compute(flows: &HashSet<Flow>, maximal_finite_coordinate: u16) -> Self {
+    pub fn compute(flows: &HashSet<Flow>, maximal_finite_coordinate: coef) -> Self {
         let mut semigroup = FlowSemigroup::new();
         for flow in flows.iter() {
             semigroup.flows.insert(flow.clone());
@@ -38,7 +36,7 @@ impl FlowSemigroup {
         Self::is_covered(flow, &self.flows)
     }
 
-    pub fn get_path_problem_solution(&self, target: &[nfa::State]) -> ideal::Ideal {
+    pub fn get_path_problem_solution(&self, target: &[usize]) -> ideal::Ideal {
         ideal::Ideal::from_vec(
             &self
                 .flows
@@ -53,13 +51,13 @@ impl FlowSemigroup {
     fn get_products_buggy(
         left: &Flow,
         right: &Flow,
-        _maximal_finite_coordinate: u16,
+        _maximal_finite_coordinate: coef,
     ) -> rayon::iter::Once<Flow> {
         rayon::iter::once(left.clone() * right.clone())
     }
 
     ///non-deterministic product
-    fn get_products(left: &Flow, right: &Flow, maximal_finite_coordinate: u16) -> HashSet<Flow> {
+    fn get_products(left: &Flow, right: &Flow, maximal_finite_coordinate: coef) -> Vec<Flow> {
         debug_assert_eq!(left.nb_rows, right.nb_rows);
         //debug!("get_products\nleft\n{}\nright\n{}", left, right);
         let dim = left.nb_rows;
@@ -68,7 +66,7 @@ impl FlowSemigroup {
         let left = &mut left.clone();
         let right = &mut right.clone();
 
-        let mut result = HashSet::<Flow>::new();
+        let mut result = Vec::<Flow>::new();
         Self::get_products_rec(
             dim,
             left,
@@ -78,6 +76,7 @@ impl FlowSemigroup {
             omega_part,
             &mut result,
         );
+        //print!("{} ", result.len());
         result
     }
 
@@ -85,10 +84,10 @@ impl FlowSemigroup {
         dim: usize,
         left: &Flow,
         right: &Flow,
-        maximal_finite_coordinate: u16,
+        maximal_finite_coordinate: coef,
         k: usize,
         current_flow: Flow,
-        flow_accumulator: &mut HashSet<Flow>,
+        flow_accumulator: &mut Vec<Flow>,
     ) {
         debug_assert!(k < dim);
         /*debug!(
@@ -110,7 +109,7 @@ impl FlowSemigroup {
                     flow_accumulator,
                 );
             } else {
-                flow_accumulator.insert(current_flow);
+                flow_accumulator.push(current_flow);
             }
             return;
         }
@@ -171,7 +170,7 @@ impl FlowSemigroup {
             //debug!("current_flow after\n{}\n", current_flow);
             let k1 = k + 1;
             if k1 >= dim {
-                flow_accumulator.insert(current_flow);
+                flow_accumulator.push(current_flow);
             } else {
                 Self::get_products_rec(
                     dim,
@@ -192,54 +191,74 @@ impl FlowSemigroup {
         );*/
     }
 
-    fn close_by_product_and_iteration(&mut self, maximal_finite_coordinate: u16) {
-        let mut to_process: VecDeque<Flow> = self.flows.iter().cloned().collect();
-        let mut processed = HashSet::<Flow>::new();
-        while !to_process.is_empty() {
-            let flow = to_process.pop_front().unwrap();
-            print!(".");
-            io::stdout().flush().unwrap();
-            println!(
-                "\nClose_by_product_and_iteration processing flow\n{}\n",
-                flow
-            );
-            if Self::is_covered(&flow, &processed) {
-                //debug!("Skipped inqueue\n{}", flow);
-                continue;
-            }
-            processed.insert(flow.clone());
+    fn close_by_product_and_iteration(&mut self, maximal_finite_coordinate: coef) {
+        let mut to_process_mult: VecDeque<Flow> = self.flows.iter().cloned().collect();
+        let mut to_process_iter: VecDeque<Flow> = self
+            .flows
+            .iter()
+            .filter(|f| f.is_idempotent())
+            .cloned()
+            .collect();
+        //let mut processed = HashSet::<Flow>::new();
+        loop {
+            let mut changed = false;
+            while !to_process_mult.is_empty() {
+                let flow = to_process_mult.pop_front().unwrap();
+                print!(".");
+                io::stdout().flush().unwrap();
+                debug!("\nClose by product processing flow\n{}\n", flow);
+                /*if Self::is_covered(&flow, &processed) {
+                    //debug!("Skipped inqueue\n{}", flow);
+                    continue;
+                }*/
+                //processed.insert(flow.clone());
 
-            let iteration = flow.iteration();
-            if !Self::is_covered(&iteration, &self.flows) {
-                debug!("\n\nAdded iteration\n{}", iteration);
-                self.flows.insert(iteration.clone());
-                to_process.push_back(iteration);
-            } else {
-                //debug!("\n\nSkipped iteration\n{}", iteration);
-            }
-            {
                 let right_products = self
                     .flows
                     .par_iter()
+                    //.iter()
                     .flat_map(|other| Self::get_products(&flow, other, maximal_finite_coordinate));
                 let left_products = self
                     .flows
                     .par_iter()
+                    //.iter()
                     .flat_map(|other| Self::get_products(other, &flow, maximal_finite_coordinate));
                 let products: HashSet<Flow> = left_products.chain(right_products).collect();
-                debug!("Products {:?}\n", products);
+                //debug!("Products {:?}\n", products);
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
-                        debug!("\n\nAdded product\n{}", product);
                         self.flows.insert(product.clone());
-                        to_process.push_back(product);
+                        print!("\n\nAdded product, total {}", self.flows.len());
+                        if product.is_idempotent() {
+                            to_process_iter.push_back(product.clone());
+                        }
+                        to_process_mult.push_back(product);
+                        changed = true;
                     } else {
                         //debug!("\n\nSkipped product\n{}", product);
                     }
                 }
             }
-            self.minimize();
+            while !to_process_iter.is_empty() {
+                let flow = to_process_iter.pop_front().unwrap();
+                debug_assert!(flow.is_idempotent());
+                print!(".");
+                println!("\nClose by product processing flow\n{}\n", flow);
+                let iteration = flow.iteration();
+                if !Self::is_covered(&iteration, &self.flows) {
+                    debug!("\n\nAdded iteration\n{}", iteration);
+                    self.flows.insert(iteration.clone());
+                    to_process_mult.push_back(iteration);
+                    changed = true;
+                } else {
+                    //debug!("\n\nSkipped iteration\n{}", iteration);
+                }
+            }
+            if !changed {
+                break;
+            }
         }
+        self.minimize();
     }
 
     fn is_covered(flow: &Flow, others: &HashSet<Flow>) -> bool {
@@ -284,7 +303,7 @@ impl FlowSemigroup {
 fn get_transports(
     left_edges: Vec<Coef>,
     right_edges: Vec<Coef>,
-    maximal_finite_coordinate: u16,
+    maximal_finite_coordinate: coef,
 ) -> HashSet<Flow> {
     //C = min(dim, sum ni, sum mi)
     let nb_rows = left_edges.len();
@@ -361,8 +380,8 @@ fn get_transports_rec(
     current_flow: &mut Flow,
     edges: &Vec<(usize, usize)>,
     current_edge: usize,
-    nb_strays_left: &mut Vec<u16>,
-    nb_strays_right: &mut Vec<u16>,
+    nb_strays_left: &mut Vec<coef>,
+    nb_strays_right: &mut Vec<coef>,
     flow_accumulator: &mut HashSet<Flow>,
 ) {
     debug_assert!(current_edge < edges.len());
@@ -441,7 +460,7 @@ mod tests {
         let dim = 2 as usize;
         let flowa = Flow::from_lines(&[&[OMEGA, C1], &[C0, OMEGA]]);
         let flows: HashSet<Flow> = [flowa].into();
-        let semigroup = FlowSemigroup::compute(&flows, dim as u16);
+        let semigroup = FlowSemigroup::compute(&flows, dim as coef);
         let flow_omega = Flow::from_entries(dim, dim, &[OMEGA, OMEGA, C0, OMEGA]);
         print!("\nsemigroup\n\n{}", semigroup);
         assert!(semigroup.flows.contains(&flow_omega));
@@ -509,7 +528,7 @@ mod tests {
         let dim = 2;
         let left = vec![C1, C0];
         let right = vec![C0, C1];
-        let transports = get_transports(left, right, dim as u16);
+        let transports = get_transports(left, right, dim as coef);
         //println!("transports {:?}", transports);
         assert_eq!(transports.len(), 1);
         assert_eq!(
@@ -525,7 +544,7 @@ mod tests {
         let c4 = Coef::Value(4);
         let left = vec![c2, c2];
         let right = vec![c4, c4];
-        let transports = get_transports(left, right, dim as u16);
+        let transports = get_transports(left, right, dim as coef);
         /*println!(
             "transports\n{}",
             transports.iter().map(|t| t.to_string()).join("\n\n")
@@ -551,7 +570,7 @@ mod tests {
         let dim = 2;
         let left = vec![];
         let right = vec![];
-        let transports = get_transports(left, right, dim as u16);
+        let transports = get_transports(left, right, dim as coef);
         assert!(!transports.is_empty());
         let t = transports.iter().next().unwrap();
         assert!(t.nb_rows == 0);
@@ -563,7 +582,7 @@ mod tests {
         let dim = 2;
         let left = Flow::from_lines(&[&[C1, C0], &[C0, C1]]);
         let right = Flow::from_lines(&[&[C1, C0], &[C0, C1]]);
-        let products = FlowSemigroup::get_products(&left, &right, dim as u16);
+        let products = FlowSemigroup::get_products(&left, &right, dim as coef);
         assert_eq!(products.len(), 1);
         assert_eq!(
             products.iter().next().unwrap(),
@@ -588,7 +607,7 @@ mod tests {
             &[C0, C0, C0, C0],
             &[C0, C0, C0, C0],
         ]);
-        let products = FlowSemigroup::get_products(&left, &right, dim as u16);
+        let products = FlowSemigroup::get_products(&left, &right, dim as coef);
         println!(
             "products\n{}",
             products.iter().map(|t| t.to_string()).join("\n\n"),
@@ -631,7 +650,7 @@ mod tests {
             &[C0, C0, C0, C0, C0], //
         ]);
         let right = left.clone();
-        let products = FlowSemigroup::get_products(&left, &right, dim as u16);
+        let products = FlowSemigroup::get_products(&left, &right, dim as coef);
         println!(
             "products\n{}",
             products.iter().map(|t| t.to_string()).join("\n\n"),
@@ -657,7 +676,7 @@ mod tests {
             &[C0, C0, C0, C0, OMEGA], //
         ]);
         let right = left.clone();
-        let products = FlowSemigroup::get_products(&left, &right, dim as u16);
+        let products = FlowSemigroup::get_products(&left, &right, dim as coef);
         println!(
             "products\n{}",
             products.iter().map(|t| t.to_string()).join("\n\n"),

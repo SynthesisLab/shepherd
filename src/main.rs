@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::fs::File;
-use std::io::Write;
 use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 mod coef;
 mod flow;
@@ -27,10 +27,7 @@ enum OutputFormat {
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(
-        value_name = "AUTOMATON_FILE",
-        help = "path to the input"
-    )]
+    #[arg(value_name = "AUTOMATON_FILE", help = "path to the input")]
     filename: String,
 
     #[arg(
@@ -65,11 +62,17 @@ struct Args {
         long,
         value_enum,
         default_value = "input",
-        help = format!("The state reordering type.\n'{:?}' preserves input order.\n\
-        '{:?}' sorts by label.\n\
-        '{:?}' sorts states topologically.\n", nfa::StateOrdering::Input, nfa::StateOrdering::Alphabetical, nfa::StateOrdering::Topological)
+        help = format!("The state reordering type: preserves input order, sorts alphabetically or topologically.")
     )]
     state_ordering: nfa::StateOrdering,
+
+    #[arg(
+        long,
+        value_enum,
+        default_value = "strategy",
+        help = format!("The solver output. Either yes/no and a winning strategy (the faster). Or the full maximal winning strategy.")
+    )]
+    solver_output: solver::SolverOutput,
 }
 
 fn main() {
@@ -93,14 +96,18 @@ fn main() {
     println!("{}", nfa);
 
     // compute the solution
-    let solution = solver::solve(&nfa);
+    let solution = solver::solve(&nfa, &args.solver_output);
 
     // print the solution in any case.
     // This now only prints the status: controllable or not.
     println!("{}", solution);
 
     // only if the answer was positive, format the winning strategy
-    if solution.result {
+    let output_strategy = match args.solver_output {
+        solver::SolverOutput::Strategy => true,
+        solver::SolverOutput::YesNo => solution.result.unwrap_or(false),
+    };
+    if output_strategy {
         // create a writer were we later print the output.
         // This is either a file or simply stdout.
         let mut out_writer = match args.output_path {
@@ -158,9 +165,9 @@ mod tests {
     #[test]
     fn test_example_1() {
         let nfa = nfa::Nfa::from_tikz(&EXAMPLE1);
-        let solution = solver::solve(&nfa);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
-        assert!(!solution.result);
+        assert!(!solution.result.unwrap_or(false));
         assert_eq!(solution.maximal_winning_strategy.iter().count(), 2);
         let ideala = solution
             .maximal_winning_strategy
@@ -187,9 +194,9 @@ mod tests {
     #[test]
     fn test_example_1bis() {
         let nfa = nfa::Nfa::from_tikz(&EXAMPLE1_COMPLETE);
-        let solution = solver::solve(&nfa);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
-        assert!(!solution.result);
+        assert!(!solution.result.unwrap_or(false));
         assert_eq!(solution.maximal_winning_strategy.iter().count(), 2);
         let ideala = solution
             .maximal_winning_strategy
@@ -213,9 +220,9 @@ mod tests {
     #[test]
     fn test_example_2() {
         let nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
-        let solution = solver::solve(&nfa);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
-        assert!(!solution.result);
+        assert!(!solution.result.unwrap_or(false));
         assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
         let ideala = solution
             .maximal_winning_strategy
@@ -232,8 +239,8 @@ mod tests {
     fn test_example_2_sorted_alpha() {
         let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Alphabetical);
-        let solution = solver::solve(&nfa);
-        assert!(!solution.result);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        assert!(!solution.result.unwrap_or(false));
         assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
         let ideala = solution
             .maximal_winning_strategy
@@ -250,8 +257,8 @@ mod tests {
     fn test_example_2_sorted_topo() {
         let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Topological);
-        let solution = solver::solve(&nfa);
-        assert!(!solution.result);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        assert!(!solution.result.unwrap_or(false));
         assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
         let ideala = solution
             .maximal_winning_strategy
@@ -268,7 +275,7 @@ mod tests {
     fn test_bug12() {
         let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE_BUG12);
         nfa.sort(&nfa::StateOrdering::Topological);
-        let solution = solver::solve(&nfa);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         let idealb = solution
             .maximal_winning_strategy
             .iter()

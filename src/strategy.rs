@@ -1,4 +1,4 @@
-use crate::coef::OMEGA;
+use crate::coef::{coef, OMEGA};
 use crate::graph::Graph;
 use crate::ideal::Ideal;
 use crate::nfa;
@@ -26,14 +26,20 @@ impl Strategy {
     }
 
     pub fn is_defined_on(&self, source: &Sheep) -> bool {
-        self.0.values().any(|ideal| ideal.contains(source))
+        let answer = self.0.values().any(|ideal| ideal.contains(source));
+        if answer {
+            println!("is_defined_on {}", source);
+        } else {
+            println!("is_not_defined_on {}", source);
+        }
+        answer
     }
 
     pub(crate) fn restrict_to(
         &mut self,
         safe: Ideal,
         edges_per_letter: &HashMap<nfa::Letter, Graph>,
-        maximal_finite_value: u16,
+        maximal_finite_value: coef,
     ) -> bool {
         let mut result = false;
         for (a, ideal) in self.0.iter_mut() {

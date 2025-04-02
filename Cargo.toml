@@ -16,5 +16,8 @@ rayon = "1.10.0"
 itertools = "0.14.0"
 
 [profile.release]
-strip = true # Supprime les symboles de débogage
-lto = true   # Optimisation inter-procédurale (Link-Time Optimization)
+#strip = true # Supprime les symboles de débogage
+#lto = true   # Optimisation inter-procédurale (Link-Time Optimization)
+
+#profile mode
+#debug = true

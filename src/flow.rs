@@ -1,23 +1,28 @@
-use crate::coef::{Coef, C0, C1, OMEGA};
+use crate::coef::{coef, Coef, C0, C1, OMEGA};
 use crate::graph::Graph;
-use crate::nfa;
 use crate::partitions;
 use crate::sheep;
 use crate::sheep::Sheep;
 use itertools::Itertools;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Mul, Sub};
 use std::{collections::HashSet, vec::Vec}; // Import the itertools crate for multi_cartesian_product
-
 pub type Domain = Vec<Coef>;
 
-#[derive(Eq, PartialEq, Hash, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Flow {
     pub nb_rows: usize,
     pub nb_cols: usize,
     //size is nb_rows * nb_cols
     entries: Vec<Coef>,
+}
+
+impl Hash for Flow {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.entries.hash(state);
+    }
 }
 
 impl PartialOrd for Flow {
@@ -176,7 +181,7 @@ impl Flow {
             let i0 = i * dim;
             for j in 0..dim {
                 //invariant k = i * dim + j
-                let mut resultk: u16 = 0;
+                let mut resultk: coef = 0;
                 let mut li = i0;
                 let mut lj = j;
                 let mut is_omega = false;
@@ -318,7 +323,7 @@ impl Flow {
     ///computes the preimage of a target set of states
     /// that is the maximal ideal from which there exists a path to the target states
     /// finite coordinates are summed up...
-    pub fn pre_image(&self, target: &[nfa::State]) -> Sheep {
+    pub fn pre_image(&self, target: &[usize]) -> Sheep {
         Sheep::from_vec(
             (0..self.nb_rows)
                 .map(|i| target.iter().map(|&j| self.get(&i, &j)).sum::<Coef>())
@@ -452,6 +457,10 @@ impl Flow {
 
     fn is_empty(&self) -> bool {
         self.nb_cols == 0 && self.nb_rows == 0
+    }
+
+    pub(crate) fn is_idempotent(&self) -> bool {
+        self * self == *self
     }
 }
 
