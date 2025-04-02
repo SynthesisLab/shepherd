@@ -121,9 +121,9 @@ impl<'a> Sum<&'a Flow> for Flow {
     {
         let mut iter = iter;
         match iter.next() {
-            None => panic!("Cannot sum up empty sheep iterator, because dimension is unknown"),
-            Some(sheep) => {
-                let mut result = sheep.clone();
+            None => panic!("Cannot sum up empty ideal iterator, because dimension is unknown"),
+            Some(ideal) => {
+                let mut result = ideal.clone();
                 for x in iter {
                     result.add_other(x);
                 }
@@ -320,7 +320,7 @@ impl Flow {
     }
 
     ///computes the preimage of a target set of states
-    /// that is the maximal ideal from which there exists a path to the target states
+    /// that is the maximal downset from which there exists a path to the target states
     /// finite coordinates are summed up...
     pub fn pre_image(&self, target: &[usize]) -> Ideal {
         Ideal::from_vec(
@@ -470,10 +470,10 @@ impl fmt::Display for Flow {
             result.push_str("empty flow");
         } else {
             for i in 0..self.nb_rows {
-                let sheep = Ideal::from_vec(
+                let ideal = Ideal::from_vec(
                     self.entries[i * self.nb_cols..(i + 1) * self.nb_cols].to_vec(),
                 );
-                result.push_str(&sheep.to_string());
+                result.push_str(&ideal.to_string());
                 result.push('\n');
             }
         }

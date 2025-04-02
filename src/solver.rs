@@ -1,9 +1,9 @@
 use crate::coef::{coef, C0, OMEGA};
 use crate::flow;
 use crate::graph::Graph;
+use crate::ideal::Ideal;
 use crate::nfa;
 use crate::semigroup;
-use crate::ideal::Ideal;
 use crate::solution::Solution;
 use crate::strategy::Strategy;
 use clap::ValueEnum;
@@ -19,7 +19,7 @@ pub enum SolverOutput {
 
 pub fn solve(nfa: &nfa::Nfa, output: &SolverOutput) -> Solution {
     let dim = nfa.nb_states();
-    let source = get_omega_sheep(
+    let source = get_omega_ideal(
         dim,
         &nfa.initial_states().iter().cloned().collect::<Vec<_>>(),
     );
@@ -119,7 +119,7 @@ fn update_strategy(
     edges: &HashMap<String, Graph>,
     maximal_finite_value: u8,
 ) -> bool {
-    let final_ideal = get_omega_sheep(dim, final_states);
+    let final_ideal = get_omega_ideal(dim, final_states);
     let action_flows = compute_action_flows(strategy, edges);
     debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
     debug!(
@@ -128,24 +128,24 @@ fn update_strategy(
     );
     let semigroup = semigroup::FlowSemigroup::compute(&action_flows, maximal_finite_value);
     debug!("Semigroup:\n{}", semigroup);
-    debug!("Computing winning ideal");
-    let mut winning_ideal = semigroup.get_path_problem_solution(final_states);
-    winning_ideal.insert(&final_ideal);
-    winning_ideal.round_down(maximal_finite_value, dim);
-    winning_ideal.minimize();
-    debug!("Winning ideal for the path problem:\n{}", winning_ideal);
+    debug!("Computing winning set");
+    let mut winning_downset = semigroup.get_path_problem_solution(final_states);
+    winning_downset.insert(&final_ideal);
+    winning_downset.round_down(maximal_finite_value, dim);
+    winning_downset.minimize();
+    debug!("Winning set for the path problem:\n{}", winning_downset);
     debug!("Restricting strategy");
-    let changed = strategy.restrict_to(winning_ideal, edges, maximal_finite_value);
+    let changed = strategy.restrict_to(winning_downset, edges, maximal_finite_value);
     debug!("Strategy after restriction:\n{}", strategy);
     changed
 }
 
-fn get_omega_sheep(dim: usize, states: &[usize]) -> Ideal {
-    let mut sheep = Ideal::new(dim, C0);
+fn get_omega_ideal(dim: usize, states: &[usize]) -> Ideal {
+    let mut ideal = Ideal::new(dim, C0);
     for state in states {
-        sheep.set(*state, OMEGA);
+        ideal.set(*state, OMEGA);
     }
-    sheep
+    ideal
 }
 
 fn compute_action_flows(
@@ -153,10 +153,10 @@ fn compute_action_flows(
     edges: &HashMap<nfa::Letter, Graph>,
 ) -> HashSet<flow::Flow> {
     let mut action_flows = HashSet::new();
-    for (action, ideal) in strategy.iter() {
+    for (action, downset) in strategy.iter() {
         let edges_for_action = edges.get(action).unwrap();
-        for sheep in ideal.sheeps() {
-            let flows = flow::Flow::from_domain_and_edges(sheep, edges_for_action);
+        for ideal in downset.ideals() {
+            let flows = flow::Flow::from_domain_and_edges(ideal, edges_for_action);
             for flow in flows {
                 action_flows.insert(flow);
             }

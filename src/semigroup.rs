@@ -1,5 +1,5 @@
 use crate::coef::{coef, Coef, OMEGA};
-use crate::downward_closed_set;
+use crate::downset;
 use crate::flow::Flow;
 use cached::proc_macro::cached;
 use itertools::Itertools;
@@ -39,8 +39,8 @@ impl FlowSemigroup {
     pub fn get_path_problem_solution(
         &self,
         target: &[usize],
-    ) -> downward_closed_set::DownwardClosedSet {
-        downward_closed_set::DownwardClosedSet::from_vec(
+    ) -> downset::DownSet {
+        downset::DownSet::from_vec(
             &self
                 .flows
                 .iter()

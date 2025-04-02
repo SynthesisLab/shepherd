@@ -4,7 +4,7 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 mod coef;
-mod downward_closed_set;
+mod downset;
 mod flow;
 mod graph;
 mod ideal;
@@ -106,7 +106,7 @@ fn main() {
             println!("\nSolution\n{}", solution);
             if solution.is_controllable {
                 println!(
-                    "\nStrategy winning from the initial ideal (might not be maximal)\n{}",
+                    "\nStrategy winning from the initial positions (might not be maximal)\n{}",
                     solution.winning_strategy
                 );
             }
@@ -166,7 +166,7 @@ fn main() {
 mod tests {
     use super::*;
     use crate::coef::{C0, C1, C2, OMEGA};
-    use crate::downward_closed_set::DownwardClosedSet;
+    use crate::downset::DownSet;
     use crate::ideal::Ideal;
 
     const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
@@ -181,14 +181,14 @@ mod tests {
         print!("{}", solution);
         assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 2);
-        let ideala = solution
+        let downseta = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
             .next()
             .unwrap();
-        let idealb = solution
+        let downsetb = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
@@ -197,13 +197,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            *ideala,
-            DownwardClosedSet::from_vecs(&[&[C1, C0, C0, C0, C0], &[C0, OMEGA, C0, C0, C0]])
+            *downseta,
+            DownSet::from_vecs(&[&[C1, C0, C0, C0, C0], &[C0, OMEGA, C0, C0, C0]])
         );
-        assert_eq!(
-            *idealb,
-            DownwardClosedSet::from_vecs(&[&[C0, C0, OMEGA, C0, C0]])
-        );
+        assert_eq!(*downsetb, DownSet::from_vecs(&[&[C0, C0, OMEGA, C0, C0]]));
     }
 
     #[test]
@@ -213,14 +210,14 @@ mod tests {
         print!("{}", solution);
         assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 2);
-        let ideala = solution
+        let downseta = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
             .next()
             .unwrap();
-        let idealb = solution
+        let downsetb = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
@@ -229,12 +226,12 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            *ideala,
-            DownwardClosedSet::from_vecs(&[&[C1, OMEGA, C0, OMEGA, C0]])
+            *downseta,
+            DownSet::from_vecs(&[&[C1, OMEGA, C0, OMEGA, C0]])
         );
         assert_eq!(
-            *idealb,
-            DownwardClosedSet::from_vecs(&[&[C0, C0, OMEGA, OMEGA, C0]])
+            *downsetb,
+            DownSet::from_vecs(&[&[C0, C0, OMEGA, OMEGA, C0]])
         );
     }
 
@@ -245,7 +242,7 @@ mod tests {
         print!("{}", solution);
         assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
-        let ideala = solution
+        let downseta = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
@@ -253,10 +250,7 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(
-            *ideala,
-            DownwardClosedSet::from_vecs(&[&[C2, C0, C0, C0, C0]])
-        );
+        assert_eq!(*downseta, DownSet::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
 
     #[test]
@@ -266,7 +260,7 @@ mod tests {
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
-        let ideala = solution
+        let downseta = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
@@ -274,10 +268,7 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(
-            *ideala,
-            DownwardClosedSet::from_vecs(&[&[C0, C0, C0, C0, C2]])
-        );
+        assert_eq!(*downseta, DownSet::from_vecs(&[&[C0, C0, C0, C0, C2]]));
     }
 
     #[test]
@@ -287,7 +278,7 @@ mod tests {
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
-        let ideala = solution
+        let downseta = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
@@ -295,10 +286,7 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(
-            *ideala,
-            DownwardClosedSet::from_vecs(&[&[C2, C0, C0, C0, C0]])
-        );
+        assert_eq!(*downseta, DownSet::from_vecs(&[&[C2, C0, C0, C0, C0]]));
     }
 
     #[test]
@@ -306,14 +294,14 @@ mod tests {
         let mut nfa = nfa::Nfa::from_tikz(EXAMPLE_BUG12);
         nfa.sort(&nfa::StateOrdering::Topological);
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
-        let idealb = solution
+        let downsetb = solution
             .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
             .map(|x| x.1)
             .next()
             .unwrap();
-        println!("{}", idealb);
-        assert!(idealb.contains(&Ideal::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
+        println!("{}", downsetb);
+        assert!(downsetb.contains(&Ideal::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
     }
 }

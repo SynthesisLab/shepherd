@@ -57,12 +57,12 @@ impl Sum for Ideal {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         let mut iter = iter;
         match iter.next() {
-            None => panic!("Cannot sum up empty sheep iterator"),
-            Some(mut sheep) => {
+            None => panic!("Cannot sum up empty ideal iterator"),
+            Some(mut ideal) => {
                 for x in iter {
-                    sheep += x;
+                    ideal += x;
                 }
-                sheep
+                ideal
             }
         }
     }
@@ -75,9 +75,9 @@ impl<'a> Sum<&'a Ideal> for Ideal {
     {
         let mut iter = iter;
         match iter.next() {
-            None => panic!("Cannot sum up empty sheep iterator"),
-            Some(sheep) => {
-                let mut result = sheep.clone();
+            None => panic!("Cannot sum up empty ideal iterator"),
+            Some(ideal) => {
+                let mut result = ideal.clone();
                 for x in iter {
                     result.add_other(x);
                 }
@@ -112,11 +112,11 @@ impl Ideal {
         self.0[state] = val;
     }
 
-    pub(crate) fn intersection(x: &Ideal, sheep: &Ideal) -> Ideal {
-        debug_assert_eq!(x.len(), sheep.len());
+    pub(crate) fn intersection(x: &Ideal, ideal: &Ideal) -> Ideal {
+        debug_assert_eq!(x.len(), ideal.len());
         Ideal(
             x.0.iter()
-                .zip(sheep.0.iter())
+                .zip(ideal.0.iter())
                 .map(|(x, y)| min(x, y))
                 .cloned()
                 .collect(),
@@ -166,7 +166,7 @@ impl Ideal {
             .any(|&x| x < OMEGA && x > Coef::Value(upper_bound))
     }
 
-    // create a CSV representation of this sheep,
+    // create a CSV representation of this ideal,
     // as comma separated values, one for each state
     pub fn as_csv(&self) -> String {
         let content = self
@@ -232,44 +232,44 @@ mod test {
     #[allow(clippy::neg_cmp_op_on_partial_ord)]
     #[test]
     fn is_below() {
-        let master_sheep = Ideal(vec![OMEGA, OMEGA]);
-        let medium_sheep = Ideal(vec![Coef::Value(7), Coef::Value(7)]);
-        let ini_sheep = Ideal(vec![OMEGA, C0]);
-        let final_sheep = Ideal(vec![C0, OMEGA]);
+        let master_ideal = Ideal(vec![OMEGA, OMEGA]);
+        let medium_ideal = Ideal(vec![Coef::Value(7), Coef::Value(7)]);
+        let ini_ideal = Ideal(vec![OMEGA, C0]);
+        let final_ideal = Ideal(vec![C0, OMEGA]);
 
-        assert!(master_sheep <= master_sheep);
-        assert!(medium_sheep <= master_sheep);
-        assert!(ini_sheep <= master_sheep);
-        assert!(final_sheep <= master_sheep);
+        assert!(master_ideal <= master_ideal);
+        assert!(medium_ideal <= master_ideal);
+        assert!(ini_ideal <= master_ideal);
+        assert!(final_ideal <= master_ideal);
 
-        assert!(!(master_sheep <= medium_sheep));
-        assert!(medium_sheep <= medium_sheep);
-        assert!(!(ini_sheep <= medium_sheep));
-        assert!(!(final_sheep <= medium_sheep));
+        assert!(!(master_ideal <= medium_ideal));
+        assert!(medium_ideal <= medium_ideal);
+        assert!(!(ini_ideal <= medium_ideal));
+        assert!(!(final_ideal <= medium_ideal));
 
-        assert!(!(master_sheep <= ini_sheep));
-        assert!(!(medium_sheep <= ini_sheep));
-        assert!(ini_sheep <= ini_sheep);
-        assert!(!(final_sheep <= ini_sheep));
+        assert!(!(master_ideal <= ini_ideal));
+        assert!(!(medium_ideal <= ini_ideal));
+        assert!(ini_ideal <= ini_ideal);
+        assert!(!(final_ideal <= ini_ideal));
 
-        assert!(!(master_sheep <= final_sheep));
-        assert!(!(medium_sheep <= final_sheep));
-        assert!(!(ini_sheep <= final_sheep));
-        assert!(final_sheep <= final_sheep);
+        assert!(!(master_ideal <= final_ideal));
+        assert!(!(medium_ideal <= final_ideal));
+        assert!(!(ini_ideal <= final_ideal));
+        assert!(final_ideal <= final_ideal);
     }
 
     #[test]
     fn min() {
-        let sheep0 = Ideal::from_vec(vec![C0, C1, C2, OMEGA]);
-        let sheep1 = Ideal::from_vec(vec![OMEGA, C2, C1, C0]);
+        let ideal0 = Ideal::from_vec(vec![C0, C1, C2, OMEGA]);
+        let ideal1 = Ideal::from_vec(vec![OMEGA, C2, C1, C0]);
         let intersect = Ideal::from_vec(vec![C0, C1, C1, C0]);
-        assert_eq!(intersect, Ideal::intersection(&sheep0, &sheep1));
+        assert_eq!(intersect, Ideal::intersection(&ideal0, &ideal1));
     }
 
     //from_non_zero_coefs
     #[test]
     fn from_non_zero_coefs() {
-        let sheep = Ideal::from_non_zero_coefs(4, &[1, 2], &[1, 3]);
-        assert_eq!(sheep, Ideal::from_vec(vec![C0, C1, C0, C2]));
+        let ideal = Ideal::from_non_zero_coefs(4, &[1, 2], &[1, 3]);
+        assert_eq!(ideal, Ideal::from_vec(vec![C0, C1, C0, C2]));
     }
 }
