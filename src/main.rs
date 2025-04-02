@@ -145,8 +145,9 @@ fn main() {
             }
             OutputFormat::Csv => {
                 format!(
-                    "Σ, {}\n{}\n", nfa.states().join(","),
-                    solution.maximal_winning_strategy.as_csv()
+                    "Σ, {}\n{}\n",
+                    nfa.states().join(","),
+                    solution.winning_strategy.as_csv()
                 )
             }
         };
