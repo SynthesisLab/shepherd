@@ -26,13 +26,7 @@ impl Strategy {
     }
 
     pub fn is_defined_on(&self, source: &Sheep) -> bool {
-        let answer = self.0.values().any(|ideal| ideal.contains(source));
-        if answer {
-            println!("is_defined_on {}", source);
-        } else {
-            println!("is_not_defined_on {}", source);
-        }
-        answer
+        self.0.values().any(|ideal| ideal.contains(source))
     }
 
     pub(crate) fn restrict_to(
@@ -56,12 +50,12 @@ impl Strategy {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &Ideal)> {
         self.0.iter()
     }
-    
+
     // create a CSV representation of this strategy.
     pub fn as_csv(&self) -> String {
         let mut lines: Vec<nfa::Letter> = Vec::new();
 
-        for (a,i) in &self.0 {
+        for (a, i) in &self.0 {
             for s in i.as_csv() {
                 let l = format!("{a},{s}");
                 lines.push(l);

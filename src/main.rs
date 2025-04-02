@@ -104,14 +104,19 @@ fn main() {
         solver::SolverOutput::Strategy => println!("\nMaximal winning strategy;\n{}", solution),
         solver::SolverOutput::YesNo => {
             println!("\nSolution\n{}", solution);
-            println!("\nWinning strategy;\n{}", solution.winning_strategy);
+            if solution.is_controllable {
+                println!(
+                    "\nStrategy winning from the initial ideal (might not be maximal)\n{}",
+                    solution.winning_strategy
+                );
+            }
         }
     }
 
     // only if the answer was positive, format the winning strategy
     let output_strategy = match args.solver_output {
         solver::SolverOutput::Strategy => true,
-        solver::SolverOutput::YesNo => solution.result.unwrap_or(false),
+        solver::SolverOutput::YesNo => solution.is_controllable,
     };
     if output_strategy {
         // create a writer were we later print the output.
@@ -174,7 +179,7 @@ mod tests {
         let nfa = nfa::Nfa::from_tikz(EXAMPLE1);
         let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
-        assert!(!solution.result.unwrap_or(false));
+        assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 2);
         let ideala = solution
             .winning_strategy
@@ -203,7 +208,7 @@ mod tests {
         let nfa = nfa::Nfa::from_tikz(EXAMPLE1_COMPLETE);
         let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
-        assert!(!solution.result.unwrap_or(false));
+        assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 2);
         let ideala = solution
             .winning_strategy
@@ -229,7 +234,7 @@ mod tests {
         let nfa = nfa::Nfa::from_tikz(EXAMPLE2);
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         print!("{}", solution);
-        assert!(!solution.result.unwrap_or(false));
+        assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
             .winning_strategy
@@ -247,7 +252,7 @@ mod tests {
         let mut nfa = nfa::Nfa::from_tikz(EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Alphabetical);
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
-        assert!(!solution.result.unwrap_or(false));
+        assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
             .winning_strategy
@@ -265,7 +270,7 @@ mod tests {
         let mut nfa = nfa::Nfa::from_tikz(EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Topological);
         let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
-        assert!(!solution.result.unwrap_or(false));
+        assert!(!solution.is_controllable);
         assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
             .winning_strategy

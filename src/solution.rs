@@ -6,7 +6,7 @@ use tera::{Context, Tera};
 /// A solution to the population control problem.
 pub struct Solution {
     pub nfa: Nfa,
-    pub result: Option<bool>,
+    pub is_controllable: bool,
     pub winning_strategy: Strategy,
 }
 
@@ -30,12 +30,8 @@ impl Solution {
         context.insert("accepting", &self.nfa.accepting_states_str());
         context.insert("transitions", &self.nfa.transitions_str());
 
-        let answer = match self.result {
-            None => "",
-            Some(true) => "YES (controllable)",
-            Some(false) => "NO (uncontrollable)",
-        };
-        context.insert("answer", answer);
+        let answer = self.to_string();
+        context.insert("answer", &answer);
 
         context.insert("strategy", &self.winning_strategy.to_string());
 
@@ -51,10 +47,9 @@ impl Solution {
 
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let answer = match self.result {
-            None => self.winning_strategy.to_string(),
-            Some(true) => "\tYES (controllable)".to_string(),
-            Some(false) => "\tNO (uncontrollable)".to_string(),
+        let answer = match self.is_controllable {
+            true => "\tYES (controllable)".to_string(),
+            false => "\tNO (uncontrollable)".to_string(),
         };
         writeln!(f, "Answer:\n{}", answer)
     }
