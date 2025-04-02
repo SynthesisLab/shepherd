@@ -1,6 +1,6 @@
 use crate::coef::{coef, Coef, OMEGA};
+use crate::downward_closed_set;
 use crate::flow::Flow;
-use crate::ideal;
 use cached::proc_macro::cached;
 use itertools::Itertools;
 use log::debug;
@@ -36,8 +36,11 @@ impl FlowSemigroup {
         Self::is_covered(flow, &self.flows)
     }
 
-    pub fn get_path_problem_solution(&self, target: &[usize]) -> ideal::Ideal {
-        ideal::Ideal::from_vec(
+    pub fn get_path_problem_solution(
+        &self,
+        target: &[usize],
+    ) -> downward_closed_set::DownwardClosedSet {
+        downward_closed_set::DownwardClosedSet::from_vec(
             &self
                 .flows
                 .iter()
@@ -457,7 +460,7 @@ impl fmt::Display for FlowSemigroup {
 mod tests {
     use super::*;
     use crate::coef::{C0, C1, OMEGA};
-    use crate::sheep::Sheep;
+    use crate::ideal::Ideal;
 
     #[test]
     fn test_flow_semigroup_compute1() {
@@ -502,7 +505,7 @@ mod tests {
         println!("semigroup\n\n{}", semigroup);
         let path_problem_solution = semigroup.get_path_problem_solution(&[1, 2]);
         println!("path_problem_solution\n{}", path_problem_solution);
-        let expected = &Sheep::from_vec(vec![Coef::Value(2), C0, C0]);
+        let expected = &Ideal::from_vec(vec![Coef::Value(2), C0, C0]);
         assert!(path_problem_solution.contains(expected));
     }
 
@@ -522,7 +525,7 @@ mod tests {
         println!("semigroup\n\n{}", semigroup);
         let path_problem_solution = semigroup.get_path_problem_solution(&[4]);
         println!("path_problem_solution\n{}", path_problem_solution);
-        let expected = &Sheep::from_vec(vec![c2, C0, C0, C0, C0]);
+        let expected = &Ideal::from_vec(vec![c2, C0, C0, C0, C0]);
         assert!(path_problem_solution.contains(expected));
     }
 

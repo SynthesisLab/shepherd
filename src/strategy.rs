@@ -1,8 +1,8 @@
 use crate::coef::{coef, OMEGA};
+use crate::downward_closed_set::DownwardClosedSet;
 use crate::graph::Graph;
 use crate::ideal::Ideal;
 use crate::nfa;
-use crate::sheep::Sheep;
 use std::io::{self, Write};
 
 use std::collections::HashMap;
@@ -12,11 +12,11 @@ use std::fmt;
 /// All non-empty ideals have the same dimension, this is the number of states of the (complete) nfa.
 /// The ideal associated to a letter represents the set of configurations where the strategy can non-deterministically play the letter.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Strategy(HashMap<nfa::Letter, Ideal>);
+pub struct Strategy(HashMap<nfa::Letter, DownwardClosedSet>);
 
 impl Strategy {
     pub fn get_maximal_strategy(dim: usize, letters: &[&str]) -> Self {
-        let maximal_ideal = Ideal::from_vecs(&[&vec![OMEGA; dim]]);
+        let maximal_ideal = DownwardClosedSet::from_vecs(&[&vec![OMEGA; dim]]);
         Strategy(
             letters
                 .iter()
@@ -25,13 +25,13 @@ impl Strategy {
         )
     }
 
-    pub fn is_defined_on(&self, source: &Sheep) -> bool {
+    pub fn is_defined_on(&self, source: &Ideal) -> bool {
         self.0.values().any(|ideal| ideal.contains(source))
     }
 
     pub(crate) fn restrict_to(
         &mut self,
-        safe: Ideal,
+        safe: DownwardClosedSet,
         edges_per_letter: &HashMap<nfa::Letter, Graph>,
         maximal_finite_value: coef,
     ) -> bool {
@@ -47,7 +47,7 @@ impl Strategy {
         result
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &Ideal)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &DownwardClosedSet)> {
         self.0.iter()
     }
 
@@ -90,20 +90,26 @@ impl fmt::Display for Strategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sheep::Sheep;
+    use crate::ideal::Ideal;
 
     #[test]
     fn test_strategy() {
         let dim = 2;
         let letters = ["a", "b"];
         let strategy = Strategy::get_maximal_strategy(dim, &letters);
-        let source = Sheep::new(dim, OMEGA);
+        let source = Ideal::new(dim, OMEGA);
         assert!(strategy.is_defined_on(&source));
         assert_eq!(
             strategy.0,
             HashMap::from([
-                ('a'.to_string(), Ideal::from_vecs(&[&[OMEGA, OMEGA]])),
-                ('b'.to_string(), Ideal::from_vecs(&[&[OMEGA, OMEGA]]))
+                (
+                    'a'.to_string(),
+                    DownwardClosedSet::from_vecs(&[&[OMEGA, OMEGA]])
+                ),
+                (
+                    'b'.to_string(),
+                    DownwardClosedSet::from_vecs(&[&[OMEGA, OMEGA]])
+                )
             ])
         );
     }

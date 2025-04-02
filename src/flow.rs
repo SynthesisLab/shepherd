@@ -1,8 +1,7 @@
 use crate::coef::{coef, Coef, C0, C1, OMEGA};
 use crate::graph::Graph;
+use crate::ideal::Ideal;
 use crate::partitions;
-use crate::sheep;
-use crate::sheep::Sheep;
 use itertools::Itertools;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -323,8 +322,8 @@ impl Flow {
     ///computes the preimage of a target set of states
     /// that is the maximal ideal from which there exists a path to the target states
     /// finite coordinates are summed up...
-    pub fn pre_image(&self, target: &[usize]) -> Sheep {
-        Sheep::from_vec(
+    pub fn pre_image(&self, target: &[usize]) -> Ideal {
+        Ideal::from_vec(
             (0..self.nb_rows)
                 .map(|i| target.iter().map(|&j| self.get(&i, &j)).sum::<Coef>())
                 .collect(),
@@ -339,7 +338,7 @@ impl Flow {
     /*
     WIP
     */
-    pub(crate) fn from_domain_and_edges(domain: &sheep::Sheep, edges: &Graph) -> HashSet<Flow> {
+    pub(crate) fn from_domain_and_edges(domain: &Ideal, edges: &Graph) -> HashSet<Flow> {
         //debug!("Creating flow from domain and edges");
         //debug!("domain\n{}", domain);
         //debug!("edges{}", edges);
@@ -389,7 +388,7 @@ impl Flow {
         self.entries[i * self.nb_cols + j] == OMEGA
     }
 
-    fn get_lines_vec(domain: &sheep::Sheep, edges: &Graph) -> Vec<Vec<Domain>> {
+    fn get_lines_vec(domain: &Ideal, edges: &Graph) -> Vec<Vec<Domain>> {
         let dim = domain.len();
         domain
             .iter()
@@ -471,7 +470,7 @@ impl fmt::Display for Flow {
             result.push_str("empty flow");
         } else {
             for i in 0..self.nb_rows {
-                let sheep = sheep::Sheep::from_vec(
+                let sheep = Ideal::from_vec(
                     self.entries[i * self.nb_cols..(i + 1) * self.nb_cols].to_vec(),
                 );
                 result.push_str(&sheep.to_string());
@@ -514,7 +513,7 @@ mod test {
     #[test]
     #[should_panic]
     fn from_domain_and_edges_panic_case() {
-        let domain = sheep::Sheep::from_vec(vec![C1, C2, C3]);
+        let domain = Ideal::from_vec(vec![C1, C2, C3]);
         let edges = Graph::from_vec(2, vec![(0, 1), (1, 3)]);
         Flow::from_domain_and_edges(&domain, &edges);
     }
@@ -546,7 +545,7 @@ mod test {
     //test _get_lines_vec on an example with domain=[1,3,omega] and edges=[(0,1),(1,0),(1,1),(2,1),(2,2)]
     #[test]
     fn get_lines_vec_test() {
-        let domain = sheep::Sheep::from_vec(vec![C1, C3, OMEGA]);
+        let domain = Ideal::from_vec(vec![C1, C3, OMEGA]);
         let edges = Graph::from_vec(3, vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
         let expected = [
             vec![vec![C0, C1, C0]],
@@ -572,7 +571,7 @@ mod test {
     //tests from_domain_and_edges on an example with domain=[1,3,omega] and edges=[(0,1),(1,0),(1,1),(2,1),(2,2)]
     #[test]
     fn from_domain_and_edges_test() {
-        let domain = sheep::Sheep::from_vec(vec![C1, C3, OMEGA]);
+        let domain = Ideal::from_vec(vec![C1, C3, OMEGA]);
         let edges = Graph::from_vec(3, vec![(0, 1), (1, 0), (1, 1), (2, 1), (2, 2)]);
         let flows = Flow::from_domain_and_edges(&domain, &edges);
         let expected = vec![
@@ -712,15 +711,15 @@ mod test {
         ]);
         assert_eq!(
             flow.pre_image(&[0]),
-            Sheep::from_vec(vec![OMEGA, C0, C0, C0])
+            Ideal::from_vec(vec![OMEGA, C0, C0, C0])
         );
         assert_eq!(
             flow.pre_image(&[2, 3]),
-            Sheep::from_vec(vec![C0, C3, OMEGA, OMEGA])
+            Ideal::from_vec(vec![C0, C3, OMEGA, OMEGA])
         );
         assert_eq!(
             flow.pre_image(&[1, 2]),
-            Sheep::from_vec(vec![OMEGA, OMEGA, OMEGA, C0])
+            Ideal::from_vec(vec![OMEGA, OMEGA, OMEGA, C0])
         );
     }
 }

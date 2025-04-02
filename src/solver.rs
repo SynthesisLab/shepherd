@@ -3,7 +3,7 @@ use crate::flow;
 use crate::graph::Graph;
 use crate::nfa;
 use crate::semigroup;
-use crate::sheep::Sheep;
+use crate::ideal::Ideal;
 use crate::solution::Solution;
 use crate::strategy::Strategy;
 use clap::ValueEnum;
@@ -75,7 +75,7 @@ fn compute_maximal_winning_strategy(
 
 fn compute_control_problem_solution(
     dim: usize,
-    source: &Sheep,
+    source: &Ideal,
     final_states: &[usize],
     edges: HashMap<String, Graph>,
     letters: &[&str],
@@ -140,8 +140,8 @@ fn update_strategy(
     changed
 }
 
-fn get_omega_sheep(dim: usize, states: &[usize]) -> Sheep {
-    let mut sheep = Sheep::new(dim, C0);
+fn get_omega_sheep(dim: usize, states: &[usize]) -> Ideal {
+    let mut sheep = Ideal::new(dim, C0);
     for state in states {
         sheep.set(*state, OMEGA);
     }

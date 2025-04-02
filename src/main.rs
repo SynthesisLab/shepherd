@@ -4,6 +4,7 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 mod coef;
+mod downward_closed_set;
 mod flow;
 mod graph;
 mod ideal;
@@ -11,7 +12,6 @@ mod memoizer;
 mod nfa;
 mod partitions;
 mod semigroup;
-mod sheep;
 mod solution;
 mod solver;
 mod strategy;
@@ -166,8 +166,8 @@ fn main() {
 mod tests {
     use super::*;
     use crate::coef::{C0, C1, C2, OMEGA};
+    use crate::downward_closed_set::DownwardClosedSet;
     use crate::ideal::Ideal;
-    use crate::sheep::Sheep;
 
     const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
     const EXAMPLE1_COMPLETE: &str = include_str!("../examples/bottleneck-1-ab-complete.tikz");
@@ -198,9 +198,12 @@ mod tests {
 
         assert_eq!(
             *ideala,
-            Ideal::from_vecs(&[&[C1, C0, C0, C0, C0], &[C0, OMEGA, C0, C0, C0]])
+            DownwardClosedSet::from_vecs(&[&[C1, C0, C0, C0, C0], &[C0, OMEGA, C0, C0, C0]])
         );
-        assert_eq!(*idealb, Ideal::from_vecs(&[&[C0, C0, OMEGA, C0, C0]]));
+        assert_eq!(
+            *idealb,
+            DownwardClosedSet::from_vecs(&[&[C0, C0, OMEGA, C0, C0]])
+        );
     }
 
     #[test]
@@ -225,8 +228,14 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(*ideala, Ideal::from_vecs(&[&[C1, OMEGA, C0, OMEGA, C0]]));
-        assert_eq!(*idealb, Ideal::from_vecs(&[&[C0, C0, OMEGA, OMEGA, C0]]));
+        assert_eq!(
+            *ideala,
+            DownwardClosedSet::from_vecs(&[&[C1, OMEGA, C0, OMEGA, C0]])
+        );
+        assert_eq!(
+            *idealb,
+            DownwardClosedSet::from_vecs(&[&[C0, C0, OMEGA, OMEGA, C0]])
+        );
     }
 
     #[test]
@@ -244,7 +253,10 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
+        assert_eq!(
+            *ideala,
+            DownwardClosedSet::from_vecs(&[&[C2, C0, C0, C0, C0]])
+        );
     }
 
     #[test]
@@ -262,7 +274,10 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(*ideala, Ideal::from_vecs(&[&[C0, C0, C0, C0, C2]]));
+        assert_eq!(
+            *ideala,
+            DownwardClosedSet::from_vecs(&[&[C0, C0, C0, C0, C2]])
+        );
     }
 
     #[test]
@@ -280,7 +295,10 @@ mod tests {
             .next()
             .unwrap();
 
-        assert_eq!(*ideala, Ideal::from_vecs(&[&[C2, C0, C0, C0, C0]]));
+        assert_eq!(
+            *ideala,
+            DownwardClosedSet::from_vecs(&[&[C2, C0, C0, C0, C0]])
+        );
     }
 
     #[test]
@@ -296,6 +314,6 @@ mod tests {
             .next()
             .unwrap();
         println!("{}", idealb);
-        assert!(idealb.contains(&Sheep::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
+        assert!(idealb.contains(&Ideal::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
     }
 }
