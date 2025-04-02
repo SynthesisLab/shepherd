@@ -200,32 +200,35 @@ impl FlowSemigroup {
                 }*/
                 //processed.insert(flow.clone());
 
-                let mut products: HashSet<Flow>;
-                if maximal_finite_coordinate <= 1 {
-                    let right_products = self
-                        .flows
-                        .par_iter() //.iter()
-                        .map(|other| &flow * other);
-                    let left_products = self
-                        .flows
-                        .par_iter() //.iter()
-                        .map(|other| other * &flow);
-                    products = left_products.chain(right_products).collect();
-                } else {
-                    let right_products = self
-                        .flows
-                        .par_iter() //.iter()
-                        .flat_map(|other| {
-                            Self::get_products(&flow, other, maximal_finite_coordinate)
-                        });
-                    let left_products = self
-                        .flows
-                        .par_iter() //.iter()
-                        .flat_map(|other| {
-                            Self::get_products(other, &flow, maximal_finite_coordinate)
-                        });
-                    products = left_products.chain(right_products).collect();
-                }
+                let products: HashSet<Flow> = match maximal_finite_coordinate {
+                    0 | 1 => {
+                        let right_products = self
+                            .flows
+                            .par_iter() //.iter()
+                            .map(|other| &flow * other);
+                        let left_products = self
+                            .flows
+                            .par_iter() //.iter()
+                            .map(|other| other * &flow);
+                        left_products.chain(right_products).collect()
+                    }
+                    _ => {
+                        let right_products = self
+                            .flows
+                            .par_iter() //.iter()
+                            .flat_map(|other| {
+                                Self::get_products(&flow, other, maximal_finite_coordinate)
+                            });
+                        let left_products = self
+                            .flows
+                            .par_iter() //.iter()
+                            .flat_map(|other| {
+                                Self::get_products(other, &flow, maximal_finite_coordinate)
+                            });
+                        left_products.chain(right_products).collect()
+                    }
+                };
+
                 //debug!("Products {:?}\n", products);
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
