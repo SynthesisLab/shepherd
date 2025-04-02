@@ -46,26 +46,14 @@ impl FlowSemigroup {
         )
     }
 
-    ///deterministic product, fails for constants >= 2
-    #[allow(dead_code)]
-    fn get_products_buggy(
-        left: &Flow,
-        right: &Flow,
-        _maximal_finite_coordinate: coef,
-    ) -> rayon::iter::Once<Flow> {
-        rayon::iter::once(left.clone() * right.clone())
-    }
-
     ///non-deterministic product
     fn get_products(left: &Flow, right: &Flow, maximal_finite_coordinate: coef) -> Vec<Flow> {
         debug_assert_eq!(left.nb_rows, right.nb_rows);
-        //debug!("get_products\nleft\n{}\nright\n{}", left, right);
         let dim = left.nb_rows;
         let omega_part = Flow::get_omega_entries(left, right);
         //debug!("omega part\n{}\n", omega_part);
         let left = &mut left.clone();
         let right = &mut right.clone();
-
         let mut result = Vec::<Flow>::new();
         Self::get_products_rec(
             dim,
@@ -76,7 +64,6 @@ impl FlowSemigroup {
             omega_part,
             &mut result,
         );
-        //print!("{} ", result.len());
         result
     }
 
@@ -213,17 +200,32 @@ impl FlowSemigroup {
                 }*/
                 //processed.insert(flow.clone());
 
-                let right_products = self
-                    .flows
-                    .par_iter()
-                    //.iter()
-                    .flat_map(|other| Self::get_products(&flow, other, maximal_finite_coordinate));
-                let left_products = self
-                    .flows
-                    .par_iter()
-                    //.iter()
-                    .flat_map(|other| Self::get_products(other, &flow, maximal_finite_coordinate));
-                let products: HashSet<Flow> = left_products.chain(right_products).collect();
+                let mut products: HashSet<Flow>;
+                if maximal_finite_coordinate <= 1 {
+                    let right_products = self
+                        .flows
+                        .par_iter() //.iter()
+                        .map(|other| &flow * other);
+                    let left_products = self
+                        .flows
+                        .par_iter() //.iter()
+                        .map(|other| other * &flow);
+                    products = left_products.chain(right_products).collect();
+                } else {
+                    let right_products = self
+                        .flows
+                        .par_iter() //.iter()
+                        .flat_map(|other| {
+                            Self::get_products(&flow, other, maximal_finite_coordinate)
+                        });
+                    let left_products = self
+                        .flows
+                        .par_iter() //.iter()
+                        .flat_map(|other| {
+                            Self::get_products(other, &flow, maximal_finite_coordinate)
+                        });
+                    products = left_products.chain(right_products).collect();
+                }
                 //debug!("Products {:?}\n", products);
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
@@ -453,7 +455,6 @@ mod tests {
     use super::*;
     use crate::coef::{C0, C1, OMEGA};
     use crate::sheep::Sheep;
-    
 
     #[test]
     fn test_flow_semigroup_compute1() {
