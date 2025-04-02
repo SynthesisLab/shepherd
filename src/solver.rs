@@ -40,11 +40,8 @@ fn compute_control_problem_solution(nfa: &nfa::Nfa) -> Solution {
         loop {
             //convert strategy to flows
             info!(
-                "Looking for a winning strategy using maximal finite_value {} step {} states\n{}\ncurrent strategy\n{}",
-                maximal_finite_value,
-                step,
-                nfa.states_str(),
-                strategy
+                "Looking for a winning strategy using maximal finite_value {} step {}",
+                maximal_finite_value, step
             );
             step += 1;
 
@@ -68,7 +65,7 @@ fn compute_control_problem_solution(nfa: &nfa::Nfa) -> Solution {
     Solution {
         nfa: nfa.clone(),
         result: Some(strategy.is_defined_on(&source)),
-        maximal_winning_strategy: strategy,
+        winning_strategy: strategy,
     }
 }
 
@@ -106,7 +103,7 @@ fn compute_maximal_winning_strategy(nfa: &nfa::Nfa) -> Solution {
     Solution {
         nfa: nfa.clone(),
         result: None,
-        maximal_winning_strategy: strategy,
+        winning_strategy: strategy,
     }
 }
 
@@ -117,8 +114,8 @@ fn update_strategy(
     edges: &HashMap<String, Graph>,
     maximal_finite_value: u8,
 ) -> bool {
-    let final_ideal = get_omega_sheep(dim, &final_states);
-    let action_flows = compute_action_flows(&strategy, &edges);
+    let final_ideal = get_omega_sheep(dim, final_states);
+    let action_flows = compute_action_flows(strategy, edges);
     debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
     debug!(
         "Computing semigroup with maximal_finite_value {}",
@@ -127,7 +124,7 @@ fn update_strategy(
     let semigroup = semigroup::FlowSemigroup::compute(&action_flows, maximal_finite_value);
     debug!("Semigroup:\n{}", semigroup);
     debug!("Computing winning ideal");
-    let mut winning_ideal = semigroup.get_path_problem_solution(&final_states);
+    let mut winning_ideal = semigroup.get_path_problem_solution(final_states);
     winning_ideal.insert(&final_ideal);
     //non-omega stay below dim
     /*
@@ -144,7 +141,7 @@ fn update_strategy(
     winning_ideal.minimize();
     debug!("Winning ideal for the path problem:\n{}", winning_ideal);
     debug!("Restricting strategy");
-    let changed = strategy.restrict_to(winning_ideal, &edges, maximal_finite_value);
+    let changed = strategy.restrict_to(winning_ideal, edges, maximal_finite_value);
     debug!("Strategy after restriction:\n{}", strategy);
     changed
 }
@@ -258,17 +255,16 @@ mod tests {
     }
 
     #[test]
-    fn test_solve_positive_mono_letter() {
+    fn test_solve_mono_letter_positive() {
         let mut nfa = Nfa::from_size(2);
         nfa.add_initial_by_index(0);
         nfa.add_final_by_index(1);
         nfa.add_transition_by_index1(0, 0, 'a');
         nfa.add_transition_by_index1(0, 1, 'a');
         nfa.add_transition_by_index1(1, 1, 'a');
-        let solution = solve(&nfa, &SolverOutput::YesNo);
-        assert_eq!(solution.result.unwrap_or(false), true);
+        let solution = solve(&nfa, &SolverOutput::Strategy);
         assert_eq!(
-            solution.maximal_winning_strategy,
+            solution.winning_strategy,
             Strategy::get_maximal_strategy(2, &["a"])
         );
     }
@@ -282,7 +278,7 @@ mod tests {
         nfa.add_transition_by_index1(0, 1, 'a');
         nfa.add_transition_by_index1(0, 2, 'a');
         nfa.add_transition_by_index1(1, 2, 'a');
-        let solution = solve(&nfa, &SolverOutput::YesNo);
+        let solution = solve(&nfa, &SolverOutput::Strategy);
         assert!(!solution.result.unwrap_or(false));
     }
 
@@ -295,9 +291,9 @@ mod tests {
         nfa.add_transition_by_index1(1, 1, 'a');
         nfa.add_transition_by_index1(0, 2, 'a');
         nfa.add_transition_by_index1(2, 2, 'a');
-        let solution = solve(&nfa, &SolverOutput::YesNo);
+        let solution = solve(&nfa, &SolverOutput::Strategy);
         print!("{}", solution);
-        assert_eq!(solution.result.unwrap_or(false), false);
+        assert!(!solution.result.unwrap_or(false));
     }
 
     #[test]
@@ -328,6 +324,6 @@ mod tests {
 
         let solution = solve(&nfa, &SolverOutput::YesNo);
         print!("{}", solution);
-        assert_eq!(solution.result.unwrap_or(false), true);
+        assert!(solution.result.unwrap_or(false));
     }
 }

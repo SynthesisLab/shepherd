@@ -191,7 +191,7 @@ impl Sheep {
     }
 
     pub(crate) fn clone_and_decrease(&self, i: usize, maximal_finite_value: coef) -> Sheep {
-        let mut result = self.clone();
+        let mut result: Sheep = self.clone();
         let c = result.0[i];
         debug_assert!(c != Coef::Value(0));
         match c {
@@ -229,6 +229,7 @@ mod test {
     use crate::coef::C2;
     use crate::coef::OMEGA;
 
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     #[test]
     fn is_below() {
         let master_sheep = Sheep(vec![OMEGA, OMEGA]);
@@ -268,7 +269,7 @@ mod test {
     //from_non_zero_coefs
     #[test]
     fn from_non_zero_coefs() {
-        let sheep = Sheep::from_non_zero_coefs(4, &vec![1, 2], &vec![1, 3]);
+        let sheep = Sheep::from_non_zero_coefs(4, &[1, 2], &[1, 3]);
         assert_eq!(sheep, Sheep::from_vec(vec![C0, C1, C0, C2]));
     }
 }

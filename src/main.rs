@@ -100,7 +100,13 @@ fn main() {
 
     // print the solution in any case.
     // This now only prints the status: controllable or not.
-    println!("{}", solution);
+    match args.solver_output {
+        solver::SolverOutput::Strategy => println!("\nMaximal winning strategy;\n{}", solution),
+        solver::SolverOutput::YesNo => {
+            println!("\nSolution\n{}", solution);
+            println!("\nWinning strategy;\n{}", solution.winning_strategy);
+        }
+    }
 
     // only if the answer was positive, format the winning strategy
     let output_strategy = match args.solver_output {
@@ -134,7 +140,7 @@ fn main() {
                 format!(
                     "States: {}\n {}",
                     nfa.states_str(),
-                    solution.maximal_winning_strategy
+                    solution.winning_strategy
                 )
             }
             OutputFormat::Csv => {
@@ -164,20 +170,20 @@ mod tests {
 
     #[test]
     fn test_example_1() {
-        let nfa = nfa::Nfa::from_tikz(&EXAMPLE1);
+        let nfa = nfa::Nfa::from_tikz(EXAMPLE1);
         let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
         assert!(!solution.result.unwrap_or(false));
-        assert_eq!(solution.maximal_winning_strategy.iter().count(), 2);
+        assert_eq!(solution.winning_strategy.iter().count(), 2);
         let ideala = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
             .next()
             .unwrap();
         let idealb = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
             .map(|x| x.1)
@@ -193,20 +199,20 @@ mod tests {
 
     #[test]
     fn test_example_1bis() {
-        let nfa = nfa::Nfa::from_tikz(&EXAMPLE1_COMPLETE);
+        let nfa = nfa::Nfa::from_tikz(EXAMPLE1_COMPLETE);
         let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
         print!("{}", solution);
         assert!(!solution.result.unwrap_or(false));
-        assert_eq!(solution.maximal_winning_strategy.iter().count(), 2);
+        assert_eq!(solution.winning_strategy.iter().count(), 2);
         let ideala = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
             .next()
             .unwrap();
         let idealb = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
             .map(|x| x.1)
@@ -219,13 +225,13 @@ mod tests {
 
     #[test]
     fn test_example_2() {
-        let nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
-        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        let nfa = nfa::Nfa::from_tikz(EXAMPLE2);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         print!("{}", solution);
         assert!(!solution.result.unwrap_or(false));
-        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
@@ -237,13 +243,13 @@ mod tests {
 
     #[test]
     fn test_example_2_sorted_alpha() {
-        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
+        let mut nfa = nfa::Nfa::from_tikz(EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Alphabetical);
-        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         assert!(!solution.result.unwrap_or(false));
-        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
@@ -255,13 +261,13 @@ mod tests {
 
     #[test]
     fn test_example_2_sorted_topo() {
-        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE2);
+        let mut nfa = nfa::Nfa::from_tikz(EXAMPLE2);
         nfa.sort(&nfa::StateOrdering::Topological);
-        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         assert!(!solution.result.unwrap_or(false));
-        assert_eq!(solution.maximal_winning_strategy.iter().count(), 4);
+        assert_eq!(solution.winning_strategy.iter().count(), 4);
         let ideala = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "a")
             .map(|x| x.1)
@@ -273,11 +279,11 @@ mod tests {
 
     #[test]
     fn test_bug12() {
-        let mut nfa = nfa::Nfa::from_tikz(&EXAMPLE_BUG12);
+        let mut nfa = nfa::Nfa::from_tikz(EXAMPLE_BUG12);
         nfa.sort(&nfa::StateOrdering::Topological);
-        let solution = solver::solve(&nfa, &solver::SolverOutput::YesNo);
+        let solution = solver::solve(&nfa, &solver::SolverOutput::Strategy);
         let idealb = solution
-            .maximal_winning_strategy
+            .winning_strategy
             .iter()
             .filter(|x| x.0 == "b")
             .map(|x| x.1)

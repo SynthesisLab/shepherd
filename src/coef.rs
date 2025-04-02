@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Sub};
 
+#[allow(non_camel_case_types)]
 pub type coef = u8;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, PartialOrd, Ord)]

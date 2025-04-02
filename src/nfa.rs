@@ -465,7 +465,7 @@ mod test {
 
     #[test]
     fn create() {
-        let mut nfa = Nfa::from_states(&["toto", &"titi"]);
+        let mut nfa = Nfa::from_states(&["toto", "titi"]);
         nfa.add_transition("toto", "titi", "label1");
         nfa.add_transition("titi", "toto", "label2");
         nfa.add_initial("toto");

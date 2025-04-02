@@ -41,7 +41,7 @@ type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollecti
 static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
         compute_possible_coefs(possible_coefs)
-            .map(|v| Sheep::from_vec(v))
+            .map(Sheep::from_vec)
             .collect()
     }))
 });
@@ -157,7 +157,7 @@ impl Ideal {
         changed
     }
 
-    /*
+    #[allow(dead_code)]
     pub(crate) fn restrict_to_preimage_of(
         &mut self,
         safe_target: &Ideal,
@@ -196,7 +196,7 @@ impl Ideal {
             debug!("new ideal\n{}", self);
         }
         changed
-    }*/
+    }
 
     /// Compute the safe-pre-image of the ideal by a graph.
     /// Unsafe is:
@@ -318,7 +318,6 @@ impl Ideal {
     }
 
     /* naive exponential impl of  get_intersection_with_safe_ideal*/
-    /*
     fn get_intersection_with_safe_ideal(
         sheep: &Sheep,
         edges: &crate::graph::Graph,
@@ -363,7 +362,7 @@ impl Ideal {
         }
         result.minimize();
         result
-    }*/
+    }
 
     #[allow(dead_code)]
     //below is a sad story: an optimized version of safe_pre_image which is extremely slow
@@ -444,7 +443,7 @@ impl Ideal {
         edges: &crate::graph::Graph,
         maximal_finite_coordinate: coef,
     ) -> bool {
-        let dim = edges.dim() as usize;
+        let dim = edges.dim();
 
         //if we lose some sheep, forget about it
         let lose_sheep =
@@ -537,7 +536,6 @@ impl Ideal {
         lines
     }
 
-    /*
     fn is_safe(
         sheep: &Sheep,
         edges: &crate::graph::Graph,
@@ -548,7 +546,7 @@ impl Ideal {
         let image: Ideal = Self::get_image(dim, sheep, edges, max_finite_value);
         let result = image.sheeps().all(|other| safe_target.contains(other));
         result
-    }*/
+    }
 }
 
 #[cached]

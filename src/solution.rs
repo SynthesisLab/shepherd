@@ -7,7 +7,7 @@ use tera::{Context, Tera};
 pub struct Solution {
     pub nfa: Nfa,
     pub result: Option<bool>,
-    pub maximal_winning_strategy: Strategy,
+    pub winning_strategy: Strategy,
 }
 
 impl Solution {
@@ -37,7 +37,7 @@ impl Solution {
         };
         context.insert("answer", answer);
 
-        context.insert("strategy", &self.maximal_winning_strategy.to_string());
+        context.insert("strategy", &self.winning_strategy.to_string());
 
         // Render template
         let rendered = tera
@@ -52,7 +52,7 @@ impl Solution {
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let answer = match self.result {
-            None => self.maximal_winning_strategy.to_string(),
+            None => self.winning_strategy.to_string(),
             Some(true) => "\tYES (controllable)".to_string(),
             Some(false) => "\tNO (uncontrollable)".to_string(),
         };

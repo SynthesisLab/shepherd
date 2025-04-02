@@ -101,8 +101,8 @@ impl FlowSemigroup {
             if k + 1 < dim {
                 Self::get_products_rec(
                     dim,
-                    &left,
-                    &right,
+                    left,
+                    right,
                     maximal_finite_coordinate,
                     k + 1,
                     current_flow,
@@ -153,7 +153,7 @@ impl FlowSemigroup {
             //debug!("current_flow before\n{}\n", current_flow);
             for ((subi, reali), (subj, realj)) in &all_indices {
                 let cf = current_flow.get(reali, realj);
-                let tij: Coef = t.get(&subi, &subj);
+                let tij: Coef = t.get(subi, subj);
                 let newcf = cf + tij;
                 if newcf > Coef::Value(maximal_finite_coordinate) {
                     continue;
@@ -228,7 +228,7 @@ impl FlowSemigroup {
                 for product in products {
                     if !Self::is_covered(&product, &self.flows) {
                         self.flows.insert(product.clone());
-                        print!("\n\nAdded product, total {}", self.flows.len());
+                        debug!("\n\nAdded product, total {}", self.flows.len());
                         if product.is_idempotent() {
                             to_process_iter.push_back(product.clone());
                         }
@@ -243,7 +243,7 @@ impl FlowSemigroup {
                 let flow = to_process_iter.pop_front().unwrap();
                 debug_assert!(flow.is_idempotent());
                 print!(".");
-                println!("\nClose by product processing flow\n{}\n", flow);
+                debug!("\nClose by product processing flow\n{}\n", flow);
                 let iteration = flow.iteration();
                 if !Self::is_covered(&iteration, &self.flows) {
                     debug!("\n\nAdded iteration\n{}", iteration);
@@ -453,11 +453,11 @@ mod tests {
     use super::*;
     use crate::coef::{C0, C1, OMEGA};
     use crate::sheep::Sheep;
-    use Flow;
+    
 
     #[test]
     fn test_flow_semigroup_compute1() {
-        let dim = 2 as usize;
+        let dim = 2_usize;
         let flowa = Flow::from_lines(&[&[OMEGA, C1], &[C0, OMEGA]]);
         let flows: HashSet<Flow> = [flowa].into();
         let semigroup = FlowSemigroup::compute(&flows, dim as coef);
@@ -585,7 +585,7 @@ mod tests {
         let products = FlowSemigroup::get_products(&left, &right, dim as coef);
         assert_eq!(products.len(), 1);
         assert_eq!(
-            products.iter().next().unwrap(),
+            products.first().unwrap(),
             &Flow::from_lines(&[&[C1, C0], &[C0, C1]])
         );
     }

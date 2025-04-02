@@ -565,7 +565,7 @@ mod test {
         assert_eq!(computed[2], expected[2]);
         assert_eq!(computed[1].len(), expected[1].len());
         for x in &computed[1] {
-            assert!(expected[1].contains(&x));
+            assert!(expected[1].contains(x));
         }
     }
 

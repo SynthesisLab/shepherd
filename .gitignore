@@ -4,6 +4,7 @@
 *.gz
 *.aux
 *.log
-./*.pdf
-./*.tex
+**.pdf
+**.tex
 **~
+**.svg
