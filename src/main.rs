@@ -97,6 +97,7 @@ fn main() {
         2 => builder.filter_level(LevelFilter::Debug),
         _ => builder.filter_level(LevelFilter::Trace),
     };
+    builder.format_timestamp(None);
     builder.init();
 
     // parse the input file
