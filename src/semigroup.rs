@@ -194,7 +194,7 @@ impl FlowSemigroup {
             let mut changed = false;
             while !to_process_mult.is_empty() {
                 let flow = to_process_mult.pop_front().unwrap();
-                print!(".");
+                //print!(".");
                 io::stdout().flush().unwrap();
                 debug!("\nClose by product processing flow\n{}\n", flow);
                 /*if Self::is_covered(&flow, &processed) {
@@ -250,7 +250,7 @@ impl FlowSemigroup {
             while !to_process_iter.is_empty() {
                 let flow = to_process_iter.pop_front().unwrap();
                 debug_assert!(flow.is_idempotent());
-                print!(".");
+                //print!(".");
                 debug!("\nClose by product processing flow\n{}\n", flow);
                 let iteration = flow.iteration();
                 if !Self::is_covered(&iteration, &self.flows) {

@@ -16,6 +16,8 @@ mod solution;
 mod solver;
 mod strategy;
 use log::LevelFilter;
+use log::info;
+
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputFormat {
@@ -104,7 +106,7 @@ fn main() {
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
     // print the input automaton
-    println!("{}", nfa);
+    info!("{}", nfa);
 
     // compute the solution
     let solution = solver::solve(&nfa, &args.solver_output);
