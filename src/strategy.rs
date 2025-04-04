@@ -38,7 +38,7 @@ impl Strategy {
     ) -> bool {
         let mut result = false;
         for (a, downset) in self.0.iter_mut() {
-            print!(".");
+            // print!(".");
             io::stdout().flush().unwrap();
             let edges = edges_per_letter.get(a).unwrap();
             let safe_pre_image = safe.safe_pre_image(edges, maximal_finite_value);

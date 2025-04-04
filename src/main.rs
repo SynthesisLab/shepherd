@@ -16,6 +16,8 @@ mod solution;
 mod solver;
 mod strategy;
 use log::LevelFilter;
+use log::info;
+
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputFormat {
@@ -38,6 +40,14 @@ struct Args {
         help = "The input format"
     )]
     input_format: nfa::InputFormat,
+
+    #[arg(
+        short = 'v',
+        long = "verbose",
+        action = clap::ArgAction::Count,
+        help = "Increase verbosity level (use multiple times for more verbose output)"
+    )]
+    verbosity: u8,
 
     #[arg(
         value_enum,
@@ -76,24 +86,27 @@ struct Args {
 }
 
 fn main() {
-    #[cfg(debug_assertions)]
-    env_logger::Builder::new()
-        .filter_level(LevelFilter::Debug)
-        .init();
-
-    #[cfg(not(debug_assertions))]
-    env_logger::Builder::new()
-        .filter_level(LevelFilter::Info)
-        .init();
 
     // parse CLI arguments
     let args = Args::parse();
+
+    // set up logging
+    let mut builder = env_logger::Builder::new();
+
+    match &args.verbosity {
+        0 => builder.filter_level(LevelFilter::Warn),
+        1 => builder.filter_level(LevelFilter::Info),
+        2 => builder.filter_level(LevelFilter::Debug),
+        _ => builder.filter_level(LevelFilter::Trace),
+    };
+    builder.format_timestamp(None);
+    builder.init();
 
     // parse the input file
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
 
     // print the input automaton
-    println!("{}", nfa);
+    info!("{}", nfa);
 
     // compute the solution
     let solution = solver::solve(&nfa, &args.solver_output);
