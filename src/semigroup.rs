@@ -8,7 +8,6 @@ use rayon::prelude::*;
 use std::collections::HashSet; // for distinct method
 use std::collections::VecDeque;
 use std::fmt;
-use std::io::{self, Write};
 
 pub struct FlowSemigroup {
     //invariant: all flows have the same dimension
@@ -195,7 +194,7 @@ impl FlowSemigroup {
             while !to_process_mult.is_empty() {
                 let flow = to_process_mult.pop_front().unwrap();
                 //print!(".");
-                io::stdout().flush().unwrap();
+                //io::stdout().flush().unwrap();
                 debug!("\nClose by product processing flow\n{}\n", flow);
                 /*if Self::is_covered(&flow, &processed) {
                     //debug!("Skipped inqueue\n{}", flow);
