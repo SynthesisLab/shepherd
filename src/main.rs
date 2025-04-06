@@ -50,6 +50,14 @@ struct Args {
     verbosity: u8,
 
     #[arg(
+        long,
+        short = 'l',
+        value_name = "LOG_FILE",
+        help = "Optional path to the log file. Defaults to stdout if not specified."
+    )]
+    log_output: Option<PathBuf>,
+
+    #[arg(
         value_enum,
         short = 't',
         long = "to",
@@ -91,7 +99,8 @@ fn main() {
     let args = Args::parse();
 
     // set up logging
-    let mut builder = env_logger::Builder::new();
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
 
     match &args.verbosity {
         0 => builder.filter_level(LevelFilter::Warn),
@@ -99,7 +108,20 @@ fn main() {
         2 => builder.filter_level(LevelFilter::Debug),
         _ => builder.filter_level(LevelFilter::Trace),
     };
-    builder.format_timestamp(None);
+    
+    // Decide logging output: file or stdout
+    if let Some(log_path) = args.log_output {
+        if let Ok(file) = File::create(&log_path) {
+            let writer = Box::new(file) as Box<dyn Write + Send>;
+            builder.target(env_logger::Target::Pipe(writer));
+        } else {
+            eprintln!("Could not create log file at {}. Defaulting to stderr.", log_path.display());
+            builder.target(env_logger::Target::Stderr);
+        }
+    } else {
+        builder.target(env_logger::Target::Stderr);
+    }
+    
     builder.init();
 
     // parse the input file
