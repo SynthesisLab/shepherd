@@ -15,8 +15,8 @@ mod semigroup;
 mod solution;
 mod solver;
 mod strategy;
-use log::LevelFilter;
 use log::info;
+mod logging;
 
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -99,30 +99,7 @@ fn main() {
     let args = Args::parse();
 
     // set up logging
-    let mut builder = env_logger::Builder::from_default_env();
-    builder.format_timestamp(None);
-
-    match &args.verbosity {
-        0 => builder.filter_level(LevelFilter::Warn),
-        1 => builder.filter_level(LevelFilter::Info),
-        2 => builder.filter_level(LevelFilter::Debug),
-        _ => builder.filter_level(LevelFilter::Trace),
-    };
-    
-    // Decide logging output: file or stdout
-    if let Some(log_path) = args.log_output {
-        if let Ok(file) = File::create(&log_path) {
-            let writer = Box::new(file) as Box<dyn Write + Send>;
-            builder.target(env_logger::Target::Pipe(writer));
-        } else {
-            eprintln!("Could not create log file at {}. Defaulting to stderr.", log_path.display());
-            builder.target(env_logger::Target::Stderr);
-        }
-    } else {
-        builder.target(env_logger::Target::Stderr);
-    }
-    
-    builder.init();
+    logging::setup_logger(args.verbosity, args.log_output);
 
     // parse the input file
     let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &args.state_ordering);
