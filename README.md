@@ -1,7 +1,8 @@
 # Shepherd <img src="https://raw.githubusercontent.com/SynthesisLab/shepherd/main/.graphics/logo.png" align="right" height="140" />
 
 <!-- badges: start -->
-[![GitLab CI build status](https://gitlab.com/SynthesisLab/shepherd/badges/master/pipeline.svg)](https://gitlab.com/SynthesisLab/shepherd/-/pipelines)
+[![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
+[![Clippy Lint Check](https://github.com/SynthesisLab/shepherd/actions/workflows/clippy.yml/badge.svg?branch=main&event=fork)](https://github.com/SynthesisLab/shepherd/actions/workflows/clippy.yml)
 <!-- badges: end -->
 
 
