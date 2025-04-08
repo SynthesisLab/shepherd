@@ -1,7 +1,7 @@
-# Shepherd <img src="https://raw.githubusercontent.com/SynthesisLab/shepherd/data.table/main/.graphics/logo.png" align="right" height="140" />
+# Shepherd <img src="https://raw.githubusercontent.com/SynthesisLab/shepherd/main/.graphics/logo.png" align="right" height="140" />
 
 <!-- badges: start -->
-[![GitLab CI build status](https://gitlab.com/Rdatatable/data.table/badges/master/pipeline.svg)](https://gitlab.com/SynthesisLab/shepherd/-/pipelines)
+[![GitLab CI build status](https://gitlab.com/SynthesisLab/shepherd/badges/master/pipeline.svg)](https://gitlab.com/SynthesisLab/shepherd/-/pipelines)
 <!-- badges: end -->
 
 
