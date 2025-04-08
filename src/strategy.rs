@@ -68,7 +68,7 @@ impl fmt::Display for Strategy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut letters = self.0.keys().collect::<Vec<_>>();
         letters.sort();
-        let vec: Vec<String> = letters
+        let strategy = letters
             .iter()
             .map(|a| {
                 let downset = self.0.get(*a).unwrap();
@@ -81,8 +81,9 @@ impl fmt::Display for Strategy {
                     )
                 }
             })
-            .collect();
-        write!(f, "{}", vec.join("\n"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        write!(f, "{}", strategy)
     }
 }
 

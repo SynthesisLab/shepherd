@@ -8,6 +8,7 @@ pub struct Solution {
     pub nfa: Nfa,
     pub is_controllable: bool,
     pub winning_strategy: Strategy,
+    pub semigroup: crate::semigroup::FlowSemigroup,
 }
 
 impl Solution {
@@ -34,6 +35,8 @@ impl Solution {
         context.insert("answer", &answer);
 
         context.insert("strategy", &self.winning_strategy.to_string());
+
+        context.insert("semigroup", &self.semigroup.to_string());
 
         // Render template
         let rendered = tera

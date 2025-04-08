@@ -3,7 +3,7 @@ use crate::flow;
 use crate::graph::Graph;
 use crate::ideal::Ideal;
 use crate::nfa;
-use crate::semigroup;
+use crate::semigroup::{self, FlowSemigroup};
 use crate::solution::Solution;
 use crate::strategy::Strategy;
 use clap::ValueEnum;
@@ -26,7 +26,7 @@ pub fn solve(nfa: &nfa::Nfa, output: &SolverOutput) -> Solution {
     let final_states = nfa.final_states();
     let edges = nfa.get_edges();
     let letters = nfa.get_alphabet();
-    let strategy = match output {
+    let (strategy, semigroup) = match output {
         SolverOutput::Strategy => {
             compute_maximal_winning_strategy(dim, &final_states, edges, &letters)
         }
@@ -39,6 +39,7 @@ pub fn solve(nfa: &nfa::Nfa, output: &SolverOutput) -> Solution {
         nfa: nfa.clone(),
         is_controllable,
         winning_strategy: strategy,
+        semigroup,
     }
 }
 
@@ -47,7 +48,7 @@ fn compute_maximal_winning_strategy(
     final_states: &[usize],
     edges: HashMap<String, Graph>,
     letters: &[&str],
-) -> Strategy {
+) -> (Strategy, FlowSemigroup) {
     let maximal_finite_value = dim as coef;
 
     let mut strategy = Strategy::get_maximal_strategy(dim, letters);
@@ -58,7 +59,7 @@ fn compute_maximal_winning_strategy(
         info!("Computing the maximal winning strategy step {}", step);
         step += 1;
 
-        let changed = update_strategy(
+        let (changed, semigroup) = update_strategy(
             dim,
             &mut strategy,
             final_states,
@@ -67,10 +68,9 @@ fn compute_maximal_winning_strategy(
         );
 
         if !changed {
-            break;
+            return (strategy, semigroup);
         }
     }
-    strategy
 }
 
 fn compute_control_problem_solution(
@@ -79,8 +79,9 @@ fn compute_control_problem_solution(
     final_states: &[usize],
     edges: HashMap<String, Graph>,
     letters: &[&str],
-) -> Strategy {
+) -> (Strategy, FlowSemigroup) {
     let mut strategy = Strategy::get_maximal_strategy(dim, letters);
+    let mut semigroup = FlowSemigroup::new();
 
     for maximal_finite_value in 1..dim as coef {
         let mut step = 1;
@@ -92,13 +93,14 @@ fn compute_control_problem_solution(
             );
             step += 1;
 
-            let changed = update_strategy(
+            let (changed, new_semigroup) = update_strategy(
                 dim,
                 &mut strategy,
                 final_states,
                 &edges,
                 maximal_finite_value,
             );
+            semigroup = new_semigroup;
             let result = strategy.is_defined_on(source);
 
             if !changed || !result {
@@ -109,7 +111,7 @@ fn compute_control_problem_solution(
             break;
         }
     }
-    strategy
+    (strategy, semigroup)
 }
 
 fn update_strategy(
@@ -118,7 +120,7 @@ fn update_strategy(
     final_states: &[usize],
     edges: &HashMap<String, Graph>,
     maximal_finite_value: u8,
-) -> bool {
+) -> (bool, FlowSemigroup) {
     let final_ideal = get_omega_ideal(dim, final_states);
     let action_flows = compute_action_flows(strategy, edges);
     debug!("\nAction flows:\n{}", flows_to_string(&action_flows));
@@ -137,7 +139,7 @@ fn update_strategy(
     debug!("Restricting strategy");
     let changed = strategy.restrict_to(winning_downset, edges, maximal_finite_value);
     debug!("Strategy after restriction:\n{}", strategy);
-    changed
+    (changed, semigroup)
 }
 
 fn get_omega_ideal(dim: usize, states: &[usize]) -> Ideal {
