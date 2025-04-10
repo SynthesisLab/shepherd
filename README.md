@@ -8,7 +8,7 @@
 <!-- badges: end -->
 
 
-`Shepherd` is a Rust implementation of an algorithm solving the "random population control problem",
+`Shepherd` is an implementation of an algorithm solving the "random population control problem",
 as presented in <https://arxiv.org/abs/2411.15181>.
 
 Starting from a non-deterministic finite automaton (nfa),
@@ -38,26 +38,53 @@ and displays the answer in the terminal, including a winning strategy for positi
 
 Check the file ```examples.pdf``` at the root  which gives an overview of all available examples.
 
+## Installation
 
-## Usage
+You can build an optimized binary (will be placed in `target/release/shepherd`) using the following command.
+
+```
+cargo build --release
+```
+
+To install the binary for later use this:
+```
+cargo install --path .  # to install the `shepherd` binary to your $PATH
+```
+This will move the binary into to your cargo path, usually `~/.cargo/bin`, make sure to include this in your `$PATH`.
+
+To run tests:
+```
+cargo test
+```
+
+To generate html docs to `target/doc/shepherd/index.html`
+```
+cargo doc
+```
+
+## Command-line Usage
 
 ```
 Usage: shepherd [OPTIONS] <AUTOMATON_FILE>
 
 Arguments:
-  <AUTOMATON_FILE>  path to the input
+  <AUTOMATON_FILE>  Path to the input
 
 Options:
   -f, --from <INPUT_FORMAT>
           The input format [default: tikz] [possible values: dot, tikz]
+  -v, --verbose...
+          Increase verbosity level
+  -l, --log-output <LOG_FILE>
+          Optional path to the log file. Defaults to stdout if not specified.
   -t, --to <OUTPUT_FORMAT>
           The output format [default: plain] [possible values: plain, tex, csv]
   -o, --output <OUTPUT_FILE>
-          where to write the strategy; defaults to stdout.
+          Where to write the strategy; defaults to stdout.
   -s, --state-ordering <STATE_ORDERING>
-          The state reordering type: preserves input order, sorts alphabetically or topologically. [default: input] [possible values: input, alphabetical, topological]
+          The state reordering type. [default: input] [possible values: input, alphabetical, topological]
       --solver-output <SOLVER_OUTPUT>
-          The solver output. Either yes/no and a winning strategy (the faster). Or the full maximal winning strategy. [default: strategy] [possible values: yes-no, strategy]
+          Solver output specification. [default: strategy] [possible values: yes-no, strategy]
   -h, --help
           Print help
   -V, --version
@@ -79,7 +106,7 @@ You can give the input NFA in [graphviz DOT](https://graphviz.org/docs/layouts/d
 by setting the input-format as "dot" and give a path to a dot-file as input file:
 
 ```
-cargo run -- -i dot -f examples/bottleneck-1-ab.dot
+shepherd -i dot -f examples/bottleneck-1-ab.dot
 ```
 
 The input graphs are interpret as NFA using the following convention.
@@ -101,17 +128,10 @@ and give the path to where the solution is written via the `-o` argument (defaul
 For a pretty latex report use
 
 ```
-cargo run -- -f examples/example1.tikz -o report.tex && pdflatex report.tex
+shepherd -f examples/example1.tikz -o report.tex && pdflatex report.tex
 ```
 
 The states of the NFA can be automatically reordered in order to make the generated reports more readable.
 Either topologically (`-s topological`) or alphabetically (`-s alphabetical`).
-
-
-## Perfs
-
-```cargo build --release```
-
-```./target/release/shepherd -s topological -i dot examples/bottleneck-2-staged.dot```
 
 
