@@ -122,7 +122,7 @@ impl DownSet {
     /// ```
     /// use crate::downward_closed_set::Ideal;
     /// use crate::coef::{C0, C1, C2, OMEGA};
-    /// let mut downset0 = Ideal::&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
+    /// let mut downset0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
     /// let mut downset1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
     /// let downset2 = Ideal::from_vecs(&[&[C1, OMEGA, C1, C2], &[C2, OMEGA, C1, C1]]);
     /// let downset0original = downset0.clone();
