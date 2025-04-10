@@ -2,7 +2,8 @@
 
 <!-- badges: start -->
 [![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
-[![Clippy Lint Check](https://github.com/SynthesisLab/shepherd/actions/workflows/clippy.yml/badge.svg?branch=main&event=fork)](https://github.com/SynthesisLab/shepherd/actions/workflows/clippy.yml)
+[![Build](https://github.com/SynthesisLab/shepherd/actions/workflows/build.yaml/badge.svg?branch=main&event=push)](https://github.com/SynthesisLab/shepherd/actions/workflows/build.yaml)
+[![Tests](https://github.com/SynthesisLab/shepherd/actions/workflows/test.yaml/badge.svg?branch=main&event=push)](https://github.com/SynthesisLab/shepherd/actions/workflows/test.yaml)
 <!-- badges: end -->
 
 
