@@ -1,8 +1,8 @@
-name: Clippy
-on: [pull_request] 
+name: Test
+on: [push, pull_request] 
 
 jobs: 
-  lint: 
+  test: 
     runs-on: ubuntu-latest 
 
     steps: 
@@ -15,5 +15,5 @@ jobs:
         override: true 
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
-    - name: Run clippy
-      run: cargo clippy -- -D warnings
+    - name: Run tests
+      run: cargo test --all-features --verbose
