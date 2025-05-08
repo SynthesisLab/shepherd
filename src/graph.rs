@@ -19,25 +19,25 @@ impl Graph {
 
     /// Create a new graph from a list of edges.
     #[allow(dead_code)]
-    pub(crate) fn from_vec(dim: usize, vec: Vec<(usize, usize)>) -> Graph {
+    pub fn from_vec(dim: usize, vec: Vec<(usize, usize)>) -> Graph {
         let edges: HashSet<(usize, usize)> = vec.into_iter().collect();
         Graph { dim, edges }
     }
 
     /// Return an iterator over the edges of the graph.
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(usize, usize)> {
+    pub fn iter(&self) -> impl Iterator<Item = &(usize, usize)> {
         self.edges.iter()
     }
 
     /// Return the successors of a node.
-    pub(crate) fn get_successors(&self, i: usize) -> Vec<usize> {
+    pub fn get_successors(&self, i: usize) -> Vec<usize> {
         self.edges
             .iter()
             .filter_map(|&(i0, j0)| (i == i0).then_some(j0))
             .collect()
     }
 
-    pub(crate) fn dim(&self) -> usize {
+    pub fn dim(&self) -> usize {
         self.dim
     }
 }

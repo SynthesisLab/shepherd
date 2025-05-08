@@ -77,24 +77,24 @@ impl DownSet {
     }
 
     /// Create a downset from a vector of ideals.
-    pub(crate) fn from_vec(w: &[Ideal]) -> Self {
+    pub fn from_vec(w: &[Ideal]) -> Self {
         DownSet(w.iter().cloned().collect())
     }
 
     /// Create a downset from a vector of vectors of coefficients.
     /// The method is used in the tests.
     #[allow(dead_code)]
-    pub(crate) fn from_vecs(w: &[&[Coef]]) -> Self {
+    pub fn from_vecs(w: &[&[Coef]]) -> Self {
         DownSet(w.iter().map(|&v| Ideal::from_vec(v.to_vec())).collect())
     }
 
     /// Check if an ideal is included in the downward-closed set.
-    pub(crate) fn contains(&self, source: &Ideal) -> bool {
+    pub fn contains(&self, source: &Ideal) -> bool {
         self.0.iter().any(|x| source <= x)
     }
 
     /// Check if the downset is contained in another downset.
-    pub(crate) fn is_contained_in(&self, other: &DownSet) -> bool {
+    pub fn is_contained_in(&self, other: &DownSet) -> bool {
         self.0.iter().all(|x| other.contains(x))
     }
 
@@ -110,7 +110,7 @@ impl DownSet {
     }
 
     /// Get an iterator over the ideals of the downset.
-    pub(crate) fn ideals(&self) -> impl Iterator<Item = &Ideal> {
+    pub fn ideals(&self) -> impl Iterator<Item = &Ideal> {
         self.0.iter()
     }
 
@@ -120,23 +120,23 @@ impl DownSet {
     ///
     /// # Examples
     /// ```
-    /// use crate::downward_closed_set::Ideal;
-    /// use crate::coef::{C0, C1, C2, OMEGA};
-    /// let mut downset0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
-    /// let mut downset1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
-    /// let downset2 = Ideal::from_vecs(&[&[C1, OMEGA, C1, C2], &[C2, OMEGA, C1, C1]]);
+    /// use shepherd::coef::{C0, C1, C2, OMEGA};
+    /// use shepherd::downset::DownSet;
+    /// let mut downset0 = DownSet::from_vecs(&[&[C0, C1, C2, OMEGA], &[OMEGA, C2, C1, C0]]);
+    /// let mut downset1 = DownSet::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
+    /// let downset2 = DownSet::from_vecs(&[&[C1, OMEGA, C1, C2], &[C2, OMEGA, C1, C1]]);
     /// let downset0original = downset0.clone();
     /// let changed0 = downset0.restrict_to(&downset1);
     /// assert!(!changed0);
     /// assert_eq!(downset0, downset0original);
     ///
     /// let downset1original = downset1.clone();
-    /// let changed1 = downset1.restrict_to(&ideal2);
+    /// let changed1 = downset1.restrict_to(&downset2);
     /// assert!(changed1);
     /// assert!(downset1 != downset1original);
-    /// assert_eq!(downset1, Ideal::from_vecs(&[&[C2, C2, C1, C1], &[C1, C2, C1, C2]]));
+    /// assert_eq!(downset1, DownSet::from_vecs(&[&[C2, C2, C1, C1], &[C1, C2, C1, C2]]));
     /// ```
-    pub(crate) fn restrict_to(&mut self, other: &DownSet) -> bool {
+    pub fn restrict_to(&mut self, other: &DownSet) -> bool {
         let mut changed = false;
         let mut new_ideals = DownSet::new();
         for ideal in self.0.iter() {
@@ -157,7 +157,7 @@ impl DownSet {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn restrict_to_preimage_of(
+    pub fn restrict_to_preimage_of(
         &mut self,
         safe_target: &DownSet,
         edges: &crate::graph::Graph,
@@ -202,12 +202,16 @@ impl DownSet {
     ///
     /// # Examples
     /// ```
-    /// let edges = crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
-    /// let downset1 = Ideal::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
-    /// let pre_image1 = downset1.pre_image(&edges);
+    /// use shepherd::coef::{coef, C0, C1, C2, OMEGA};
+    /// use shepherd::downset::DownSet;
+    /// use shepherd::graph::Graph;
+    /// let dim = 4;
+    /// let edges = Graph::from_vec(dim, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+    /// let downset1 = DownSet::from_vecs(&[&[OMEGA, C1, C2, OMEGA], &[OMEGA, C2, C1, OMEGA]]);
+    /// let pre_image1 = downset1.safe_pre_image(&edges, dim as coef);
     /// assert_eq!(
     ///    pre_image1,
-    ///    Ideal::from_vecs(&[
+    ///    DownSet::from_vecs(&[
     ///        &[OMEGA, C2, C0, OMEGA],
     ///        &[OMEGA, C0, C2, OMEGA],
     ///        &[OMEGA, C1, C1, OMEGA]
@@ -216,17 +220,19 @@ impl DownSet {
     /// ```
     ///
     /// ```
-    /// use crate::downward_closed_set::Ideal;
-    /// use crate::coef::{C0, C1, C2, OMEGA};
-    /// let edges = crate::graph::Graph::from_vec(vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
-    /// let downset0 = Ideal::from_vecs(&[&[C0, C1, C2, OMEGA]]);
-    /// let pre_image0 = downset0.pre_image(&edges);
+    /// use shepherd::downset::DownSet;
+    /// use shepherd::coef::{coef, C0, C1, C2, OMEGA};
+    /// use shepherd::graph::Graph;
+    /// let dim = 4;
+    /// let edges = Graph::from_vec(dim, vec![(0, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3)]);
+    /// let downset0 = DownSet::from_vecs(&[&[C0, C1, C2, OMEGA]]);
+    /// let pre_image0 = downset0.safe_pre_image(&edges, dim as coef);
     /// assert_eq!(
     ///     pre_image0,
-    ///        Ideal::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
+    ///        DownSet::from_vecs(&[&[C0, C1, C1, OMEGA], &[C0, C0, C2, OMEGA]]),
     /// );
     /// ```
-    pub(crate) fn safe_pre_image(
+    pub fn safe_pre_image(
         &self,
         edges: &crate::graph::Graph,
         maximal_finite_coordinate: coef,
@@ -469,7 +475,7 @@ impl DownSet {
         changed
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
@@ -507,7 +513,7 @@ impl DownSet {
     }
 
     /// Removes ideal with precision >.
-    pub(crate) fn round_down(&mut self, maximal_finite_value: coef, dim: usize) {
+    pub fn round_down(&mut self, maximal_finite_value: coef, dim: usize) {
         let to_remove: Vec<Ideal> = self
             .0
             .iter()
