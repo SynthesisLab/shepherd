@@ -2,19 +2,21 @@ use clap::Parser;
 use std::fs::File;
 use std::io;
 use std::io::Write;
-mod coef;
-mod downset;
-mod flow;
-mod graph;
-mod ideal;
-mod memoizer;
-mod nfa;
-mod partitions;
-mod semigroup;
-mod solution;
-mod solver;
-mod strategy;
 use log::info;
+
+pub mod coef;
+pub mod downset;
+pub mod flow;
+pub mod graph;
+pub mod ideal;
+pub mod memoizer;
+pub mod nfa;
+pub mod partitions;
+pub mod semigroup;
+pub mod solution;
+pub mod solver;
+pub mod strategy;
+
 mod cli;
 mod logging;
 
