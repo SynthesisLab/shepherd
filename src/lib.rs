@@ -1,4 +1,3 @@
-use clap::Parser;
 use std::fs::File;
 use std::io;
 use std::io::Write;
