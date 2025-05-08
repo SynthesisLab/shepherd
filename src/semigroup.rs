@@ -455,6 +455,12 @@ impl fmt::Display for FlowSemigroup {
     }
 }
 
+impl Default for FlowSemigroup {
+    fn default() -> Self {
+        FlowSemigroup::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
