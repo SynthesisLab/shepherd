@@ -29,7 +29,7 @@ impl Strategy {
         self.0.values().any(|downset| downset.contains(source))
     }
 
-    pub(crate) fn restrict_to(
+    pub fn restrict_to(
         &mut self,
         safe: DownSet,
         edges_per_letter: &HashMap<nfa::Letter, Graph>,
@@ -46,7 +46,7 @@ impl Strategy {
         result
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &DownSet)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&nfa::Letter, &DownSet)> {
         self.0.iter()
     }
 
