@@ -343,7 +343,7 @@ impl Flow {
         //debug!("domain\n{}", domain);
         //debug!("edges{}", edges);
 
-        let dim = domain.len();
+        let dim = domain.dimension();
         if edges.iter().any(|f| f.0 >= dim || f.1 >= dim) {
             panic!("Edge out of domain");
         }
@@ -389,7 +389,7 @@ impl Flow {
     }
 
     fn get_lines_vec(domain: &Ideal, edges: &Graph) -> Vec<Vec<Domain>> {
-        let dim = domain.len();
+        let dim = domain.dimension();
         domain
             .iter()
             .enumerate()

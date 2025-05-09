@@ -25,7 +25,7 @@ impl Add for &Ideal {
     type Output = Ideal;
 
     fn add(self, other: Self) -> Self::Output {
-        debug_assert_eq!(self.len(), other.len());
+        debug_assert_eq!(self.dimension(), other.dimension());
         Ideal(
             self.0
                 .iter()
@@ -45,7 +45,7 @@ impl Add for Ideal {
 
 impl AddAssign for Ideal {
     fn add_assign(&mut self, other: Self) {
-        debug_assert_eq!(self.len(), other.len());
+        debug_assert_eq!(self.dimension(), other.dimension());
         for (i, x) in self.0.iter_mut().enumerate() {
             *x += other.0[i];
         }
@@ -100,7 +100,9 @@ impl Ideal {
         self.0.iter().enumerate().all(|(i, &x)| x <= other.0[i])
     }
 
-    pub fn len(&self) -> usize {
+    /// Returns the dimension of this ideal,
+    /// which for us is the number of states in the NFA
+    pub fn dimension(&self) -> usize {
         self.0.len()
     }
 
@@ -113,7 +115,7 @@ impl Ideal {
     }
 
     pub fn intersection(x: &Ideal, ideal: &Ideal) -> Ideal {
-        debug_assert_eq!(x.len(), ideal.len());
+        debug_assert_eq!(x.dimension(), ideal.dimension());
         Ideal(
             x.0.iter()
                 .zip(ideal.0.iter())
@@ -184,8 +186,8 @@ impl Ideal {
 
     //why AddAssign does not allow adding a reference !!??
     pub fn add_other(&mut self, x: &Ideal) {
-        debug_assert_eq!(self.len(), x.len());
-        for i in 0..self.len() {
+        debug_assert_eq!(self.dimension(), x.dimension());
+        for i in 0..self.dimension() {
             self.0[i] += x.0[i];
         }
     }

@@ -344,7 +344,7 @@ impl DownSet {
                 continue;
             }
             processed.insert(flow.clone());
-            if Self::is_safe(ideal, edges, safe, ideal.len(), maximal_finite_value) {
+            if Self::is_safe(ideal, edges, safe, ideal.dimension(), maximal_finite_value) {
                 //println!("...safe");
                 result.insert(ideal);
             } else {
@@ -384,7 +384,7 @@ impl DownSet {
         }
         //println!("{} refined", candidate);
         let mut candidate_copy = candidate.clone();
-        for i in 0..candidate.len() {
+        for i in 0..candidate.dimension() {
             let ci = candidate.get(i);
             if ci == C0 || ci == OMEGA {
                 continue;
@@ -486,7 +486,7 @@ impl DownSet {
         max_finite_value: coef,
     ) -> DownSet {
         let mut downset = DownSet::new();
-        let choices = (0..dom.len())
+        let choices = (0..dom.dimension())
             .map(|index| get_choices(dim, dom.get(index), edges.get_successors(index)))
             .collect::<Vec<_>>();
         for im in choices
