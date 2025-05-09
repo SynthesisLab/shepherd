@@ -25,7 +25,7 @@ impl Add for &Ideal {
     type Output = Ideal;
 
     fn add(self, other: Self) -> Self::Output {
-        debug_assert_eq!(self.len(), other.len());
+        debug_assert_eq!(self.dimension(), other.dimension());
         Ideal(
             self.0
                 .iter()
@@ -45,7 +45,7 @@ impl Add for Ideal {
 
 impl AddAssign for Ideal {
     fn add_assign(&mut self, other: Self) {
-        debug_assert_eq!(self.len(), other.len());
+        debug_assert_eq!(self.dimension(), other.dimension());
         for (i, x) in self.0.iter_mut().enumerate() {
             *x += other.0[i];
         }
@@ -92,7 +92,7 @@ impl Ideal {
         Ideal(vec![val; dimension])
     }
 
-    pub(crate) fn from_vec(vec: Vec<Coef>) -> Ideal {
+    pub fn from_vec(vec: Vec<Coef>) -> Ideal {
         Ideal(vec)
     }
 
@@ -100,20 +100,22 @@ impl Ideal {
         self.0.iter().enumerate().all(|(i, &x)| x <= other.0[i])
     }
 
-    pub(crate) fn len(&self) -> usize {
+    /// Returns the dimension of this ideal,
+    /// which for us is the number of states in the NFA
+    pub fn dimension(&self) -> usize {
         self.0.len()
     }
 
-    pub(crate) fn get(&self, i: usize) -> Coef {
+    pub fn get(&self, i: usize) -> Coef {
         self.0[i]
     }
 
-    pub(crate) fn set(&mut self, state: usize, val: Coef) {
+    pub fn set(&mut self, state: usize, val: Coef) {
         self.0[state] = val;
     }
 
-    pub(crate) fn intersection(x: &Ideal, ideal: &Ideal) -> Ideal {
-        debug_assert_eq!(x.len(), ideal.len());
+    pub fn intersection(x: &Ideal, ideal: &Ideal) -> Ideal {
+        debug_assert_eq!(x.dimension(), ideal.dimension());
         Ideal(
             x.0.iter()
                 .zip(ideal.0.iter())
@@ -124,7 +126,7 @@ impl Ideal {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn from_non_zero_coefs(
+    pub fn from_non_zero_coefs(
         dim: usize,
         partition: &[coef],
         predecessors: &[usize],
@@ -137,11 +139,11 @@ impl Ideal {
         Ideal(result)
     }
 
-    pub(crate) fn all_omega(&self, succ: &[usize]) -> bool {
+    pub fn all_omega(&self, succ: &[usize]) -> bool {
         succ.iter().all(|&i| self.get(i) == OMEGA)
     }
 
-    pub(crate) fn round_up(&mut self, max_finite_value: coef) -> Ideal {
+    pub fn round_up(&mut self, max_finite_value: coef) -> Ideal {
         Ideal(
             self.0
                 .iter()
@@ -150,7 +152,7 @@ impl Ideal {
         )
     }
 
-    pub(crate) fn round_down(&mut self, upper_bound: coef, dim: usize) {
+    pub fn round_down(&mut self, upper_bound: coef, dim: usize) {
         for i in 0..dim {
             if let Coef::Value(x) = self.get(i) {
                 if x > upper_bound {
@@ -160,7 +162,7 @@ impl Ideal {
         }
     }
 
-    pub(crate) fn some_finite_coordinate_is_larger_than(&self, upper_bound: coef) -> bool {
+    pub fn some_finite_coordinate_is_larger_than(&self, upper_bound: coef) -> bool {
         self.0
             .iter()
             .any(|&x| x < OMEGA && x > Coef::Value(upper_bound))
@@ -178,19 +180,19 @@ impl Ideal {
         content
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Coef> {
+    pub fn iter(&self) -> impl Iterator<Item = &Coef> {
         self.0.iter()
     }
 
     //why AddAssign does not allow adding a reference !!??
     pub fn add_other(&mut self, x: &Ideal) {
-        debug_assert_eq!(self.len(), x.len());
-        for i in 0..self.len() {
+        debug_assert_eq!(self.dimension(), x.dimension());
+        for i in 0..self.dimension() {
             self.0[i] += x.0[i];
         }
     }
 
-    pub(crate) fn clone_and_decrease(&self, i: usize, maximal_finite_value: coef) -> Ideal {
+    pub fn clone_and_decrease(&self, i: usize, maximal_finite_value: coef) -> Ideal {
         let mut result: Ideal = self.clone();
         let c = result.0[i];
         debug_assert!(c != Coef::Value(0));

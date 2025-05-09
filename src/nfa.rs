@@ -321,11 +321,11 @@ impl Nfa {
             .collect()
     }
 
-    pub(crate) fn initial_states(&self) -> HashSet<State> {
+    pub fn initial_states(&self) -> HashSet<State> {
         self.initial.clone()
     }
 
-    pub(crate) fn final_states(&self) -> Vec<State> {
+    pub fn final_states(&self) -> Vec<State> {
         self.accepting.iter().cloned().collect()
     }
 
@@ -337,7 +337,7 @@ impl Nfa {
             .expect("State not found")
     }
 
-    pub(crate) fn get_support(&self, action: &str) -> crate::graph::Graph {
+    pub fn get_support(&self, action: &str) -> crate::graph::Graph {
         Graph::new(
             self.states.len(),
             &self
@@ -357,7 +357,7 @@ impl Nfa {
         Ok(content)
     }
 
-    pub(crate) fn load_from_file(
+    pub fn load_from_file(
         path: &str,
         input_type: &InputFormat,
         state_ordering: &StateOrdering,
