@@ -42,6 +42,71 @@ pub enum StateOrdering {
 }
 
 impl Nfa {
+    /// checks if the nfa is is complete:
+    /// every state has a an outgoing transition for every letter in the alphabet
+    ///
+    /// TODO: this uses equality on (sorted) vectors. Are HashSets better?
+    pub fn is_complete(&self) -> bool {
+        // get the alphabet
+        let mut letters = self.get_alphabet();
+        letters.sort();
+        // for each state, check if it has a transition for each letter in the alphabet
+        for state in 0..self.nb_states() {
+            let mut state_actions = self
+                .transitions
+                .iter()
+                .filter(|t| t.from == state)
+                .map(|t| t.label.clone())
+                .collect::<Vec<_>>();
+            state_actions.sort();
+            if state_actions != letters {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// completes the nfa by adding self-loops for every letter in the alphabet
+    ///
+    /// This takes an optional state to be used as target for the new transitions.
+    /// If this is None, new transitions will be self-loops.
+    ///
+    /// This is really horrible because we have to recompute the alphabet lots
+    pub fn complete(&mut self, sink_state: Option<State>) {
+        // get the alphabet
+        let mut letters = self
+            .get_alphabet()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>();
+        letters.sort();
+        // for each state, get all its actions
+        for state in 0..self.nb_states() {
+            let mut state_actions = self
+                .transitions
+                .iter()
+                .filter(|t| t.from == state)
+                .map(|t| t.label.clone())
+                .collect::<Vec<_>>();
+            state_actions.sort();
+
+            // for every alphabent letter add new transitions
+            for letter in &letters {
+                if !state_actions.contains(letter) {
+                    match sink_state {
+                        Some(sink) => {
+                            self.add_transition_by_index2(state, sink, letter);
+                        }
+                        None => {
+                            // add a self-loop
+                            self.add_transition_by_index2(state, state, letter);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// getter for the states attribute
     pub fn states(&self) -> &Vec<String> {
         &self.states
@@ -208,6 +273,8 @@ impl Nfa {
         nfa
     }
 
+    /// Returns the alphabet of the NFA
+    /// TODO: return a set?
     pub fn get_alphabet(&self) -> Vec<&str> {
         let mut letters = Vec::new();
         self.transitions.iter().for_each(|t| {
@@ -462,6 +529,70 @@ impl fmt::Display for Nfa {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn is_complete1() {
+        let mut nfa = Nfa::from_size(2);
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(0, 1, 'b');
+        nfa.add_transition_by_index1(1, 0, 'b');
+
+        assert!(!nfa.is_complete());
+    }
+    #[test]
+    fn is_complete2() {
+        let mut nfa = Nfa::from_size(2);
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(0, 1, 'b');
+        nfa.add_transition_by_index1(1, 0, 'a');
+        nfa.add_transition_by_index1(1, 0, 'b');
+
+        assert!(nfa.is_complete());
+    }
+    #[test]
+    fn complete_to_selfloops() {
+        // this NFA is missing a 'b'-strep from state 1.
+        // after completion, there should be a step 1 -b-> 1.
+        let mut nfa = Nfa::from_size(2);
+        nfa.add_transition_by_index1(0, 1, 'a');
+        nfa.add_transition_by_index1(0, 1, 'b');
+        nfa.add_transition_by_index1(1, 0, 'a');
+
+        assert!(!nfa.is_complete());
+        nfa.complete(None);
+        assert!(nfa.is_complete());
+        assert!(nfa.transitions
+                .iter()
+                .filter(|t| t.from == 1 && t.label== "b" && t.to==1)
+                .next().is_some()
+        );
+    }
+    #[test]
+    fn complete_to_first() {
+        // this NFA is missing an 'a'-step from state 0 and a b'-step from state 1.
+        // after completion, both should exist and point to 0.
+        let mut nfa = Nfa::from_size(2);
+        nfa.add_transition_by_index1(0, 1, 'b');
+        nfa.add_transition_by_index1(1, 0, 'a');
+
+        assert!(!nfa.is_complete());
+        nfa.complete(Some(0));
+
+        assert!(nfa.is_complete());
+
+        // check if 0 -a-> 0 exists
+        assert!(nfa.transitions
+                .iter()
+                .filter(|t| t.from == 0 && t.label == "a" && t.to==0)
+                .next().is_some()
+        );
+        // check if 1 -b-> 0 exists
+        assert!(nfa.transitions
+                .iter()
+                .filter(|t| t.from == 1 && t.label == "b" && t.to == 0)
+                .next().is_some()
+        );
+    }
 
     #[test]
     fn create() {
