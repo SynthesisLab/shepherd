@@ -320,6 +320,19 @@ impl Nfa {
         });
     }
 
+    /// add a new state with given label
+    /// returns the index of the new state or an Error if the state already exists
+    pub fn add_state(&mut self, label: &str) -> Result<State,&str>{
+        let label = String::from(label);
+        match self.states.contains(&label) {
+            true => Err("state with label exists"),
+            false => {
+                self.states.push(label);
+                Ok(self.states.len() - 1)
+            }
+        }
+    }
+
     fn check_state(&self, q: State) {
         assert!(q < self.nb_states(), "State {} is not in the NFA", q)
     }
