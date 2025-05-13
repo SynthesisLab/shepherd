@@ -48,11 +48,29 @@ pub fn main() {
     logging::setup_logger(args.verbosity, args.log_output);
 
     // parse the input file
-    let nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &nfa::StateOrdering::Input);        
+    let mut nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &nfa::StateOrdering::Input);        
 
     // print the input automaton
     info!("{}", nfa);
 
     // compute the solution
+    if !nfa.is_complete() {
+        info!("The automaton is not complete. Completing it...");
 
+        match nfa.add_state("SINK") {
+            Ok(sink) => {
+                info!("Added sink state");
+                nfa.complete(Some(sink));
+            },
+            Err(e) => {
+                info!("Error adding sink state: {}", e);
+                return;  // TODO:  handle this error properly
+            }
+        }
+    }
+    // print the complete automaton again
+    info!("{}", nfa);
+
+    // TODO: create prism input file
+    // TODO: call prism
 }
