@@ -122,11 +122,13 @@ fn write_string_to_file(content: &str, file_path: &PathBuf) -> io::Result<()> {
 }
 
 fn call_prism(args: &[&str]) -> Result<f32, ()> {
-    let child = Command::new(PRISM_CMD)
+    let mut child = Command::new(PRISM_CMD)
         .args(args)
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to call prism");
+
+    child.wait().expect("failed to wait on child");
 
     let stdout = child.stdout.expect("Failed to capture stdout");
 
@@ -144,7 +146,7 @@ fn call_prism(args: &[&str]) -> Result<f32, ()> {
     let re = Regex::new(r"Value in the initial state: (\d+\.\d+)").unwrap();
 
     for line in output.lines() {
-        if let Some(captures) = re.captures(&line) {
+        if let Some(captures) = re.captures(line) {
             if let Some(value) = captures.get(1) {
                 return value.as_str().parse::<f32>().map_err(|_| ());
             }
