@@ -21,3 +21,8 @@ itertools = "0.14.0"
 
 #profile mode
 #debug = true
+
+[[bin]]
+name = "schaeppert"
+path = "src/iterative.rs"
+
