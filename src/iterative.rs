@@ -53,7 +53,7 @@ pub fn main() {
     logging::setup_logger(args.verbosity, args.log_output);
 
     // parse the input file
-    let mut nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &nfa::StateOrdering::Input);        
+    let mut nfa = nfa::Nfa::load_from_file(&args.filename, &args.input_format, &nfa::StateOrdering::Alphabetical);
 
     // print the input automaton
     info!("{}", nfa);
