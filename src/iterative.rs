@@ -88,8 +88,12 @@ fn nfa_to_prism(nfa: &nfa::Nfa, n: usize) -> String {
 
     // module M1 will be our NFA.
     prism_input.push_str("module M1\n");
-    // define states, assume that state 0 is the initial state
-    prism_input.push_str(&format!("s1 : [0..{}] init 0;\n", nfa.nb_states()-1));
+
+    // we assume that there is only one initial state; get it.
+    let initial :nfa::State = nfa.initial_states().iter().cloned().next().unwrap();
+
+    // define states string for prism
+    prism_input.push_str(&format!("s1 : [0..{}] init {initial};\n", nfa.nb_states()-1));
 
     // define transitions
     for (act,am) in nfa.get_edges().iter() {    // for every alphabet letter
