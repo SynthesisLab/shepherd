@@ -42,8 +42,8 @@ pub enum StateOrdering {
 }
 
 impl Nfa {
-    /// checks if the nfa is is complete:
-    /// every state has a an outgoing transition for every letter in the alphabet
+    /// checks if the nfa is complete:
+    /// every state has an outgoing transition for every letter in the alphabet
     ///
     /// TODO: this uses equality on (sorted) vectors. Are HashSets better?
     pub fn is_complete(&self) -> bool {
@@ -90,7 +90,7 @@ impl Nfa {
                 .collect::<Vec<_>>();
             state_actions.sort();
 
-            // for every alphabent letter add new transitions
+            // for every alphabet letter add new transitions
             for letter in &letters {
                 if !state_actions.contains(letter) {
                     match sink_state {
