@@ -134,4 +134,30 @@ shepherd -f examples/example1.tikz -o report.tex && pdflatex report.tex
 The states of the NFA can be automatically reordered in order to make the generated reports more readable.
 Either topologically (`-s topological`) or alphabetically (`-s alphabetical`).
 
+## Comparison with iterating prism
+
+The binary `schaeppert` implements an alternative approach for the random population control problem by iteratively constructing an explicit n-fold product MDP,
+and stopping once the combined target is not almost-surely reachable.
+This is of course only a semi-decision procedure, as it may not terminate on controllable instances.
+
+MDP solving is done using [prism model checker](https://github.com/prismmodelchecker/prism) and we **assume that the `prism` binary is available in your PATH**.
+The product MDPs are represented in the PRISM language using the [parallel composition](https://www.prismmodelchecker.org/manual/ThePRISMLanguage/ProcessAlgebraOperators).
+Accordingly, the size of the representation is linear in the number of NFA transitions and $n$.
+
+The binary includes two subcommands:
+
+- `schaeppert <AUTOMATON_FILE> convert [n]`: This will read an automaton from the given file and print the n-fold product MDP to standard out. The argument `n` is optional and defaults to 1.
+- `schaeppert <AUTOMATON_FILE> iterate <TMP_DIR>`: This will read an automaton from the given file and iteratively creates prism-models and calls `prism` on them.
+
+
+```console
+./target/release/schaeppert -f dot examples/bottleneck-2-free.dot iterate tmp/
+n=1 -> 1.000
+n=2 -> 1.000
+n=3 -> 0.500
+The value is less than 1.0, stopping the search.
+The 3-fold power of this NFA is not controllable.
+```
+
+
 
