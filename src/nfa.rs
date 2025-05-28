@@ -50,14 +50,13 @@ impl Nfa {
         letters.sort();
         // for each state, check if it has a transition for each letter in the alphabet
         for state in 0..self.nb_states() {
-            let mut state_actions = self
+            let state_actions = self
                 .transitions
                 .iter()
                 .filter(|t| t.from == state)
                 .map(|t| t.label.clone())
-                .collect::<Vec<_>>();
-            state_actions.sort();
-            if state_actions != letters {
+                .collect::<std::collections::BTreeSet<_>>();
+            if !letters.iter().all(|l| state_actions.contains(*l)) {
                 return false;
             }
         }
