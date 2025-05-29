@@ -4,7 +4,7 @@ use crate::memoizer::Memoizer;
 use crate::partitions;
 use cached::proc_macro::cached;
 use itertools::Itertools;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::collections::VecDeque;
@@ -38,6 +38,7 @@ impl PartialEq for DownSet {
 type CoefsCollection = Vec<Vec<Coef>>;
 type Herd = Vec<Ideal>;
 type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollection) -> Herd>;
+static MAX_CACHED_OBJECT_SIZE: i64 = 1_000;
 static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
         compute_possible_coefs(possible_coefs)
@@ -48,7 +49,7 @@ static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(||
 
 fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Item = Vec<Coef>> {
     trace!("compute_possible_coefs({:?})", possible_coefs);
-    let result = possible_coefs
+    possible_coefs
         .iter()
         .map(|v| {
             let coef = v
@@ -68,9 +69,7 @@ fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Ite
                     .collect(),
             }
         })
-        .multi_cartesian_product();
-    trace!("compute_possible_coefs done");
-    result
+        .multi_cartesian_product()
 }
 
 impl DownSet {
@@ -302,19 +301,59 @@ impl DownSet {
         trace!("max_finite_coords: {:?}\n", max_finite_coordsi);
         trace!("is_omega_possible: {:?}\n", is_omega_possible);
         trace!("possible_coefs: {:?}\n", possible_coefs);
+        let approximate_size = possible_coefs
+            .iter()
+            .map(|v| {
+                v.iter()
+                    .map(|&x| match x {
+                        C0 => 1,
+                        OMEGA => 2,
+                        Coef::Value(c) => c as i64 + 1,
+                    })
+                    .reduce(std::cmp::max)
+                    .unwrap_or(1)
+            })
+            .reduce(|a, b| a * b)
+            .unwrap_or(0);
+        trace!("approximate_size: {:?}\n", approximate_size);
 
         let mut result = DownSet::new();
-        let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
-        candidates
-            .par_iter()
-            .filter(|&candidate| {
-                self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
-            })
-            .collect::<HashSet<_>>()
-            .iter()
-            .for_each(|c| {
-                result.insert(c);
-            });
+        if approximate_size < MAX_CACHED_OBJECT_SIZE {
+            trace!(
+                "iterating over {} possible ideals using cached value",
+                approximate_size
+            );
+            let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
+            candidates
+                .par_iter()
+                .filter(|&candidate| {
+                    self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
+                })
+                .collect::<HashSet<_>>()
+                .iter()
+                .for_each(|c| {
+                    result.insert(c);
+                });
+        } else {
+            if approximate_size > 10_000_000 {
+                warn!("iterating over a very large number of possible ideals ({}), will probably never terminate", approximate_size);
+            } else {
+                debug!("iterating over {} possible ideals", approximate_size);
+            }
+            let candidates = compute_possible_coefs(&possible_coefs);
+            candidates
+                .map(Ideal::from_vec)
+                .filter(|candidate| {
+                    self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
+                })
+                .collect::<HashSet<_>>()
+                .iter()
+                .for_each(|c| {
+                    result.insert(c);
+                });
+        };
+
+        trace!("minimizing result");
         result.minimize();
         trace!("result {}\n", result);
         result
