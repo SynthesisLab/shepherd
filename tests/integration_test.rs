@@ -1,8 +1,8 @@
-use shepherd::nfa;
-use shepherd::solver;
 use shepherd::coef::{C0, C1, C2, OMEGA};
 use shepherd::downset::DownSet;
 use shepherd::ideal::Ideal;
+use shepherd::nfa;
+use shepherd::solver;
 
 const EXAMPLE1: &str = include_str!("../examples/bottleneck-1-ab.tikz");
 const EXAMPLE1_COMPLETE: &str = include_str!("../examples/bottleneck-1-ab-complete.tikz");
@@ -138,4 +138,6 @@ fn test_bug12() {
         .unwrap();
     println!("{}", downsetb);
     assert!(downsetb.contains(&Ideal::from_vec(vec![C2, C0, C0, C0, C0, C0, C0, C0])));
+    assert!(downsetb.contains(&Ideal::from_vec(vec![C0, C1, C1, C0, C0, C0, C0, C0])));
+    assert!(downsetb.contains(&Ideal::from_vec(vec![C0, C0, C0, C0, C0, C0, C0, OMEGA])));
 }

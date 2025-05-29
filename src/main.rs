@@ -1,11 +1,11 @@
 use clap::Parser;
+use log::info;
 use std::fs::File;
 use std::io;
 use std::io::Write;
-use log::info;
 
-use shepherd::solver;
 use shepherd::nfa;
+use shepherd::solver;
 
 mod cli;
 mod logging;
