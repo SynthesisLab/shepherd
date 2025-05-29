@@ -1,15 +1,11 @@
 use crate::coef::{coef, Coef, C0, OMEGA};
 use crate::ideal::Ideal;
-use crate::memoizer::Memoizer;
 use crate::partitions;
 use cached::proc_macro::cached;
 use itertools::Itertools;
 use log::{debug, trace, warn};
-use once_cell::sync::Lazy;
-use rayon::prelude::*;
 use std::collections::VecDeque;
 use std::fmt;
-use std::sync::Mutex;
 use std::{collections::HashSet, vec::Vec};
 
 /*
@@ -36,40 +32,38 @@ impl PartialEq for DownSet {
 }
 
 type CoefsCollection = Vec<Vec<Coef>>;
-type Herd = Vec<Ideal>;
-type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollection) -> Herd>;
-static MAX_CACHED_OBJECT_SIZE: i64 = 1_000;
-static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
-    Mutex::new(Memoizer::new(|possible_coefs| {
-        expand_finite_downward_closure(possible_coefs)
-            .multi_cartesian_product()
-            .map(Ideal::from_vec)
-            .collect()
-    }))
-});
 
-fn expand_finite_downward_closure<'a>(
-    possible_coefs: &'a CoefsCollection,
-) -> impl Iterator<Item = Vec<Coef>> + 'a {
-    trace!("compute_possible_coefs({:?})", possible_coefs);
-    possible_coefs.iter().map(|v| {
-        let coef = v
-            .iter()
-            .filter_map(|&x| match x {
-                OMEGA => None,
-                Coef::Value(c) => Some(c),
-            })
-            .next();
-        let is_omega = v.contains(&OMEGA);
-        match (is_omega, coef) {
-            (false, None) => vec![C0],
-            (true, None) => vec![OMEGA],
-            (false, Some(c)) => (0..c + 1).map(Coef::Value).rev().collect(),
-            (true, Some(c)) => std::iter::once(OMEGA)
-                .chain((0..c + 1).map(Coef::Value).rev())
-                .collect(),
-        }
-    })
+/**
+ * every vector comes in order omega / 0 / c+1 / 2 / 1
+ */
+fn expand_finite_downward_closure(
+    maximal_finite_coef: &Vec<u8>,
+    is_omega_sometimes_possible: &Vec<bool>,
+    is_omega_always_possible: &Vec<bool>,
+) -> CoefsCollection {
+    trace!(
+        "expand_finite_downward_closure maximal_finite_coef {:?} is_omega_sometimes_possible {:?} is_omega_always_possible {:?})",
+        maximal_finite_coef,
+        is_omega_sometimes_possible,
+        is_omega_always_possible
+    );
+    assert!(maximal_finite_coef.len() == is_omega_sometimes_possible.len());
+    assert!(maximal_finite_coef.len() == is_omega_always_possible.len());
+    maximal_finite_coef
+        .iter()
+        .enumerate()
+        .map(|(i, &coef)| {
+            let is_omega_sometimes = is_omega_sometimes_possible[i];
+            let is_omega_always = is_omega_always_possible[i];
+            match (is_omega_always, is_omega_sometimes, coef) {
+                (true, _, _) => vec![OMEGA],
+                (false, true, _) => vec![C0, OMEGA],
+                (false, false, c) => std::iter::once(C0)
+                    .chain((1..c + 1).map(Coef::Value).rev())
+                    .collect(),
+            }
+        })
+        .collect()
 }
 
 impl DownSet {
@@ -247,16 +241,22 @@ impl DownSet {
         //compute for every i whether omega should be allowed at i,
         //this is the case iff there exists a ideal in the downward-closed set such that
         //on that coordinate the non-empty set of successors all lead to omega
-        let is_omega_possible = (0..dim)
+        let is_omega_sometimes_possible = (0..dim)
             .map(|i| {
                 let succ = edges.get_successors(i);
                 !succ.is_empty() && self.0.iter().any(|ideal| ideal.all_omega(&succ))
             })
             .collect::<Vec<_>>();
+        let is_omega_always_possible = (0..dim)
+            .map(|i| {
+                let succ = edges.get_successors(i);
+                !succ.is_empty() && self.0.iter().all(|ideal| ideal.all_omega(&succ))
+            })
+            .collect::<Vec<_>>();
 
         //compute for every j the maximal finite coef appearing at index j, if exists
         //omega are turned to 1
-        let max_finite_coordsj: Vec<coef> = (0..dim)
+        let max_finite_coords_post: Vec<coef> = (0..dim)
             .map(|j: usize| {
                 self.0
                     .iter()
@@ -270,103 +270,63 @@ impl DownSet {
             })
             .collect::<Vec<_>>();
 
-        let max_finite_coordsi = (0..dim)
+        let max_finite_coords_pre = (0..dim)
             .map(|i| {
                 {
                     edges
                         .get_successors(i)
                         .iter()
-                        .map(|&j| std::cmp::min(maximal_finite_coordinate, max_finite_coordsj[j]))
-                        .max()
+                        .map(|&j| {
+                            std::cmp::min(maximal_finite_coordinate, max_finite_coords_post[j])
+                        })
+                        .min()
                         .unwrap_or(0)
                 }
             })
             .collect::<Vec<_>>();
 
         trace!("preimage of\n{}\n by\n{}\n", self, edges);
+        trace!("max_finite_coords: {:?}\n", max_finite_coords_pre);
+        trace!(
+            "is_omega_sometimes_possible: {:?}\n",
+            is_omega_sometimes_possible
+        );
+        trace!("is_omega_always_possible: {:?}\n", is_omega_always_possible);
 
-        let possible_coefs = (0..dim)
-            .map(|i| {
-                match (
-                    max_finite_coordsi.get(i).unwrap(),
-                    is_omega_possible.get(i).unwrap(),
-                ) {
-                    (0, false) => vec![Coef::Value(0)],
-                    (0, true) => vec![OMEGA],
-                    (&c, false) => vec![Coef::Value(c)],
-                    (&c, true) => vec![OMEGA, Coef::Value(c)],
-                }
-            })
-            .collect::<Vec<_>>();
-        trace!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        trace!("is_omega_possible: {:?}\n", is_omega_possible);
-        trace!("possible_coefs: {:?}\n", possible_coefs);
-        let approximate_size = possible_coefs
-            .iter()
-            .map(|v| {
-                v.iter()
-                    .map(|&x| match x {
-                        C0 => 1,
-                        OMEGA => 2,
-                        Coef::Value(c) => c as i64 + 1,
-                    })
-                    .reduce(std::cmp::max)
-                    .unwrap_or(1)
-            })
-            .reduce(|a, b| a * b)
-            .unwrap_or(0);
-        trace!("approximate_size: {:?}\n", approximate_size);
+        let all_possible_coefs: CoefsCollection = expand_finite_downward_closure(
+            &max_finite_coords_pre,
+            &is_omega_sometimes_possible,
+            &is_omega_always_possible,
+        );
+
+        let max_iteration_nb = all_possible_coefs.iter().fold(1, |acc, l| acc * l.len());
+        trace!("max_iteration_nb: {:?}\n", max_iteration_nb);
+        if max_iteration_nb > 10_000_000 {
+            warn!("iterating over a potentially very large number of possible ideals (up to {}), will possibly never terminate", max_iteration_nb);
+        } else {
+            debug!("iterating over up to {} possible ideals", max_iteration_nb);
+        }
 
         let mut result = DownSet::new();
-        if approximate_size < MAX_CACHED_OBJECT_SIZE {
-            trace!(
-                "iterating over {} possible ideals using cached value",
-                approximate_size
-            );
-            let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
-            candidates
-                .par_iter()
-                .filter(|&candidate| {
-                    self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
-                })
-                .collect::<HashSet<_>>()
+        let mut iterator: Vec<usize> = DownSet::get_initial_iterator(&all_possible_coefs);
+        let mut is_not_over = true;
+        while is_not_over {
+            let coordinates = iterator
                 .iter()
-                .for_each(|c| {
-                    result.insert(c);
-                });
-        } else {
-            if approximate_size > 10_000_000 {
-                warn!("iterating over a potentially very large number of possible ideals (up to {}), will possibly never terminate", approximate_size);
+                .enumerate()
+                .map(|(i, &j)| all_possible_coefs[i][j])
+                .collect();
+            let candidate = Ideal::from_vec(coordinates);
+            trace!("checking candidate {} for safe preimage", candidate);
+            let is_safe = self.is_safe_with_roundup(&candidate, edges, maximal_finite_coordinate);
+            if is_safe {
+                trace!("{} is safe", candidate);
+                result.insert(&candidate);
             } else {
-                debug!("iterating over {} possible ideals", approximate_size);
+                trace!("{} is unsafe", candidate);
             }
-            let all_possible_coefs: CoefsCollection =
-                expand_finite_downward_closure(&possible_coefs).collect();
-            let mut iterator: Vec<usize> = DownSet::get_initial_iterator(&all_possible_coefs);
-            let mut is_not_over = true;
-            while is_not_over {
-                let candidate = Ideal::from_vec(
-                    iterator
-                        .iter()
-                        .enumerate()
-                        .map(|(i, &j)| all_possible_coefs[i][j])
-                        .collect(),
-                );
-                trace!("checking candidate {} for safe preimage", candidate);
-                let is_safe =
-                    self.is_safe_with_roundup(&candidate, edges, maximal_finite_coordinate);
-                if is_safe {
-                    trace!("{} is safe", candidate);
-                    result.insert(&candidate);
-                    //we can jump to the next incomparable ideal
-                    is_not_over =
-                        DownSet::get_next_incomparable_iterator(&mut iterator, &all_possible_coefs);
-                } else {
-                    trace!("{} is unsafe", candidate);
-                    is_not_over = DownSet::get_next_iterator(&mut iterator, &all_possible_coefs);
-                }
-            }
-        };
+            is_not_over = DownSet::get_next_iterator(&mut iterator, &all_possible_coefs, is_safe);
+        }
 
         trace!("minimizing result");
         result.minimize();
@@ -378,32 +338,69 @@ impl DownSet {
         assert!(all_possible_coefs.iter().all(|l| !l.is_empty()));
         all_possible_coefs.iter().map(|_l| 0).collect()
     }
-    fn get_next_iterator(iterator: &mut [usize], all_possible_coefs: &CoefsCollection) -> bool {
+    fn get_next_iterator(
+        iterator: &mut [usize],
+        all_possible_coefs: &CoefsCollection,
+        all_below_current_are_safe: bool,
+    ) -> bool {
         assert!(iterator.len() == all_possible_coefs.len());
-        for i in (0..iterator.len()).rev() {
-            if iterator[i] < all_possible_coefs[i].len() - 1 {
-                iterator[i] += 1;
-                return true;
-            } else {
+        if all_below_current_are_safe {
+            //l'idéal actuel est gagant donc tous les idéaux plus petits également
+            //on va chercherun itérateur qui n'est aps plus petit
+            DownSet::get_next_not_below_current(iterator, all_possible_coefs)
+        } else {
+            let mut non_zero = false;
+            for i in (0..iterator.len()).rev() {
+                if all_possible_coefs[i].len() == 1 {
+                    continue; //only one coef at this index
+                }
+                non_zero |= iterator[i] > 0;
+                if (iterator[i] == 0 && non_zero)
+                    || (0 < iterator[i] && iterator[i] < all_possible_coefs[i].len() - 1)
+                {
+                    iterator[i] += 1;
+                    return true;
+                }
                 iterator[i] = 0;
             }
+            false
         }
-        false
     }
-    fn get_next_incomparable_iterator(
+    fn get_next_not_below_current(
         iterator: &mut [usize],
         all_possible_coefs: &CoefsCollection,
     ) -> bool {
         assert!(iterator.len() == all_possible_coefs.len());
         for i in (0..iterator.len()).rev() {
-            if iterator[i] > 0 {
-                iterator[i] = 0;
-                for j in (0..i).rev() {
-                    if iterator[j] < all_possible_coefs[j].len() - 1 {
-                        iterator[j] += 1;
+            if all_possible_coefs[i].len() == 1 {
+                continue; //only one coef at this index
+            }
+            if iterator[i] == 1 {
+                //on a déjà mis le 1, on ne peut pas incrémenter
+                continue;
+            }
+            if iterator[i] == 0 {
+                //il suffit de passer à 1 et resetter à droite
+                iterator[i] = 1;
+                iterator.iter_mut().skip(i + 1).for_each(|x| *x = 0);
+                return true;
+            }
+            iterator[i] -= 1;
+            iterator.iter_mut().skip(i + 1).for_each(|x| *x = 0);
+            //on va incrémenter à gauche de i, dès que possible
+            let mut j = i;
+            while j > 0 {
+                j -= 1;
+                let itj1 = iterator[j];
+                let len1 = all_possible_coefs[j].len() - 1;
+                if len1 >= 1 && itj1 < len1 {
+                    if itj1 == 0 {
+                        iterator[j] = 1; //on met celui-là au max
+                        iterator.iter_mut().skip(j + 1).for_each(|x| *x = 0);
                         return true;
                     } else {
-                        iterator[j] = 0;
+                        iterator[j] += 1;
+                        return true;
                     }
                 }
             }
@@ -687,7 +684,7 @@ impl fmt::Display for DownSet {
 mod test {
 
     use super::*;
-    use crate::coef::{C0, C1, C2, OMEGA};
+    use crate::coef::{C0, C1, C2, C3, OMEGA};
 
     #[test]
     fn is_in_ideal() {
@@ -962,5 +959,24 @@ mod test {
         let edges = crate::graph::Graph::from_vec(dim, vec![(0, 1), (0, 2), (0, 4)]);
         let pre_image0 = downset0.safe_pre_image(&edges, dim as coef);
         assert_eq!(pre_image0, DownSet::from_vecs(&[&[C2, C0, C0, C0, C0]]));
+    }
+
+    #[test]
+    fn expand_finite_downward_closure() {
+        use crate::downset::expand_finite_downward_closure;
+        let expanded = expand_finite_downward_closure(
+            &vec![0, 3, 1, 0],
+            &vec![true, false, false, true],
+            &vec![true, false, false, false],
+        );
+        assert_eq!(
+            expanded,
+            vec![
+                vec![OMEGA],
+                vec![C0, C3, C2, C1],
+                vec![C0, C1],
+                vec![C0, OMEGA],
+            ]
+        );
     }
 }
