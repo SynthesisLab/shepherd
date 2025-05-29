@@ -1,9 +1,9 @@
 //! This module defines the command line interface (CLI) for the application.
 
+use crate::nfa;
+use crate::solver;
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
-use crate::solver;
-use crate::nfa;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum OutputFormat {
@@ -31,7 +31,7 @@ pub struct Args {
            short = 'v',
            long = "verbose",
            action = clap::ArgAction::Count,
-           help = "Increase verbosity level"
+           help = "Increase verbosity level. Default is warn only, -v is info,  -vv is debug, -vvv is trace"
        )]
     pub verbosity: u8,
 

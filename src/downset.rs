@@ -4,7 +4,7 @@ use crate::memoizer::Memoizer;
 use crate::partitions;
 use cached::proc_macro::cached;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, trace};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::collections::VecDeque;
@@ -281,7 +281,7 @@ impl DownSet {
             })
             .collect::<Vec<_>>();
 
-        //println!("preimage of\n{}\n by\n{}\n", self, edges);
+        trace!("preimage of\n{}\n by\n{}\n", self, edges);
 
         let possible_coefs = (0..dim)
             .map(|i| {
@@ -296,9 +296,9 @@ impl DownSet {
                 }
             })
             .collect::<Vec<_>>();
-        //println!("max_finite_coords: {:?}\n", max_finite_coordsi);
-        //println!("is_omega_possible: {:?}\n", is_omega_possible);
-        //println!("possible_coefs: {:?}\n", possible_coefs);
+        trace!("max_finite_coords: {:?}\n", max_finite_coordsi);
+        trace!("is_omega_possible: {:?}\n", is_omega_possible);
+        trace!("possible_coefs: {:?}\n", possible_coefs);
 
         let mut result = DownSet::new();
         let candidates = POSSIBLE_COEFS_CACHE.lock().unwrap().get(possible_coefs);
@@ -313,7 +313,7 @@ impl DownSet {
                 result.insert(c);
             });
         result.minimize();
-        //println!("result {}\n", result);
+        trace!("result {}\n", result);
         result
     }
 
@@ -324,36 +324,37 @@ impl DownSet {
         safe: &DownSet,
         maximal_finite_value: coef,
     ) -> DownSet {
-        /*
-        println!(
+        trace!(
             "get_intersection_with_safe_ideal\nideal: {}\nsafe_target\n{}\nedges\n{}",
-            ideal, safe_target, edges
-        ); */
+            ideal,
+            safe,
+            edges
+        );
         let mut result = DownSet::new();
         let mut to_process: VecDeque<Ideal> = vec![ideal.clone()].into_iter().collect();
         let mut processed = HashSet::<Ideal>::new();
         while !to_process.is_empty() {
             let flow = to_process.pop_front().unwrap();
-            //print!("Processing {}...", flow);
+            trace!("Processing {}...", flow);
             if result.contains(&flow) {
-                //println!("...already included");
+                trace!("...already included");
                 continue;
             }
             if processed.contains(&flow) {
-                //println!("...already processed");
+                trace!("...already processed");
                 continue;
             }
             processed.insert(flow.clone());
             if Self::is_safe(ideal, edges, safe, ideal.dimension(), maximal_finite_value) {
-                //println!("...safe");
+                trace!("...safe");
                 result.insert(ideal);
             } else {
-                //println!("...unsafe");
+                trace!("...unsafe");
                 flow.iter().enumerate().for_each(|(i, &ci)| {
                     if ci != C0 {
                         let smaller = flow.clone_and_decrease(i, maximal_finite_value);
                         if !processed.contains(&smaller) {
-                            //println!("adding smaller {} to queue", smaller);
+                            trace!("adding smaller {} to queue", smaller);
                             to_process.push_back(smaller);
                         }
                     }
@@ -374,15 +375,15 @@ impl DownSet {
         maximal_finite_coordinate: coef,
     ) {
         if accumulator.contains(candidate) {
-            //println!("{} already in ideal", candidate);
+            trace!("{} already in ideal", candidate);
             return;
         }
         if self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate) {
-            //println!("{} inserted", candidate);
+            trace!("{} inserted", candidate);
             accumulator.insert(candidate);
             return;
         }
-        //println!("{} refined", candidate);
+        trace!("{} refined", candidate);
         let mut candidate_copy = candidate.clone();
         for i in 0..candidate.dimension() {
             let ci = candidate.get(i);
@@ -453,7 +454,7 @@ impl DownSet {
         }
 
         let image: DownSet = Self::get_image(dim, candidate, edges, maximal_finite_coordinate);
-        //println!("image\n{}", &image);
+        trace!("image\n{}", &image);
         let answer = image.ideals().all(|x| self.contains(x));
         answer
     }
@@ -551,7 +552,7 @@ impl DownSet {
 
 #[cached]
 fn get_choices(dim: usize, value: Coef, successors: Vec<usize>) -> Vec<Ideal> {
-    //println!("get_choices({}, {:?}, {:?})", dim, value, successors);
+    trace!("get_choices({}, {:?}, {:?})", dim, value, successors);
     //assert!(value == OMEGA || value <= Coef::Value(dim as coef));
     match value {
         C0 => vec![Ideal::new(dim, C0)],
