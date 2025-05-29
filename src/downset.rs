@@ -47,7 +47,8 @@ static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(||
 });
 
 fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Item = Vec<Coef>> {
-    possible_coefs
+    trace!("compute_possible_coefs({:?})", possible_coefs);
+    let result = possible_coefs
         .iter()
         .map(|v| {
             let coef = v
@@ -67,7 +68,9 @@ fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Ite
                     .collect(),
             }
         })
-        .multi_cartesian_product()
+        .multi_cartesian_product();
+    trace!("compute_possible_coefs done");
+    result
 }
 
 impl DownSet {
