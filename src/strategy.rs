@@ -3,6 +3,7 @@ use crate::downset::DownSet;
 use crate::graph::Graph;
 use crate::ideal::Ideal;
 use crate::nfa;
+use log::trace;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -40,8 +41,18 @@ impl Strategy {
             // print!(".");
             //io::stdout().flush().unwrap();
             let edges = edges_per_letter.get(a).unwrap();
+            trace!(
+                "Restricting strategy for letter '{}' with downset {}",
+                a,
+                downset
+            );
             let safe_pre_image = safe.safe_pre_image(edges, maximal_finite_value);
             result |= downset.restrict_to(&safe_pre_image);
+            trace!(
+                "After restriction, downset for letter '{}' is {}",
+                a,
+                downset
+            );
         }
         result
     }

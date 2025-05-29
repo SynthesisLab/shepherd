@@ -41,35 +41,35 @@ type CoefsCollectionMemoizer = Memoizer<CoefsCollection, Herd, fn(&CoefsCollecti
 static MAX_CACHED_OBJECT_SIZE: i64 = 1_000;
 static POSSIBLE_COEFS_CACHE: Lazy<Mutex<CoefsCollectionMemoizer>> = Lazy::new(|| {
     Mutex::new(Memoizer::new(|possible_coefs| {
-        compute_possible_coefs(possible_coefs)
+        expand_finite_downward_closure(possible_coefs)
+            .multi_cartesian_product()
             .map(Ideal::from_vec)
             .collect()
     }))
 });
 
-fn compute_possible_coefs(possible_coefs: &CoefsCollection) -> impl Iterator<Item = Vec<Coef>> {
+fn expand_finite_downward_closure<'a>(
+    possible_coefs: &'a CoefsCollection,
+) -> impl Iterator<Item = Vec<Coef>> + 'a {
     trace!("compute_possible_coefs({:?})", possible_coefs);
-    possible_coefs
-        .iter()
-        .map(|v| {
-            let coef = v
-                .iter()
-                .filter_map(|&x| match x {
-                    OMEGA => None,
-                    Coef::Value(c) => Some(c),
-                })
-                .next();
-            let is_omega = v.contains(&OMEGA);
-            match (is_omega, coef) {
-                (false, None) => vec![C0],
-                (true, None) => vec![OMEGA],
-                (false, Some(c)) => (0..c + 1).map(Coef::Value).collect(),
-                (true, Some(c)) => std::iter::once(OMEGA)
-                    .chain((0..c + 1).map(Coef::Value))
-                    .collect(),
-            }
-        })
-        .multi_cartesian_product()
+    possible_coefs.iter().map(|v| {
+        let coef = v
+            .iter()
+            .filter_map(|&x| match x {
+                OMEGA => None,
+                Coef::Value(c) => Some(c),
+            })
+            .next();
+        let is_omega = v.contains(&OMEGA);
+        match (is_omega, coef) {
+            (false, None) => vec![C0],
+            (true, None) => vec![OMEGA],
+            (false, Some(c)) => (0..c + 1).map(Coef::Value).rev().collect(),
+            (true, Some(c)) => std::iter::once(OMEGA)
+                .chain((0..c + 1).map(Coef::Value).rev())
+                .collect(),
+        }
+    })
 }
 
 impl DownSet {
@@ -336,21 +336,36 @@ impl DownSet {
                 });
         } else {
             if approximate_size > 10_000_000 {
-                warn!("iterating over a very large number of possible ideals ({}), will probably never terminate", approximate_size);
+                warn!("iterating over a potentially very large number of possible ideals (up to {}), will possibly never terminate", approximate_size);
             } else {
                 debug!("iterating over {} possible ideals", approximate_size);
             }
-            let candidates = compute_possible_coefs(&possible_coefs);
-            candidates
-                .map(Ideal::from_vec)
-                .filter(|candidate| {
-                    self.is_safe_with_roundup(candidate, edges, maximal_finite_coordinate)
-                })
-                .collect::<HashSet<_>>()
-                .iter()
-                .for_each(|c| {
-                    result.insert(c);
-                });
+            let all_possible_coefs: CoefsCollection =
+                expand_finite_downward_closure(&possible_coefs).collect();
+            let mut iterator: Vec<usize> = DownSet::get_initial_iterator(&all_possible_coefs);
+            let mut is_not_over = true;
+            while is_not_over {
+                let candidate = Ideal::from_vec(
+                    iterator
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &j)| all_possible_coefs[i][j])
+                        .collect(),
+                );
+                trace!("checking candidate {} for safe preimage", candidate);
+                let is_safe =
+                    self.is_safe_with_roundup(&candidate, edges, maximal_finite_coordinate);
+                if is_safe {
+                    trace!("{} is safe", candidate);
+                    result.insert(&candidate);
+                    //we can jump to the next incomparable ideal
+                    is_not_over =
+                        DownSet::get_next_incomparable_iterator(&mut iterator, &all_possible_coefs);
+                } else {
+                    trace!("{} is unsafe", candidate);
+                    is_not_over = DownSet::get_next_iterator(&mut iterator, &all_possible_coefs);
+                }
+            }
         };
 
         trace!("minimizing result");
@@ -359,6 +374,42 @@ impl DownSet {
         result
     }
 
+    fn get_initial_iterator(all_possible_coefs: &CoefsCollection) -> Vec<usize> {
+        assert!(all_possible_coefs.iter().all(|l| !l.is_empty()));
+        all_possible_coefs.iter().map(|_l| 0).collect()
+    }
+    fn get_next_iterator(iterator: &mut [usize], all_possible_coefs: &CoefsCollection) -> bool {
+        assert!(iterator.len() == all_possible_coefs.len());
+        for i in (0..iterator.len()).rev() {
+            if iterator[i] < all_possible_coefs[i].len() - 1 {
+                iterator[i] += 1;
+                return true;
+            } else {
+                iterator[i] = 0;
+            }
+        }
+        false
+    }
+    fn get_next_incomparable_iterator(
+        iterator: &mut [usize],
+        all_possible_coefs: &CoefsCollection,
+    ) -> bool {
+        assert!(iterator.len() == all_possible_coefs.len());
+        for i in (0..iterator.len()).rev() {
+            if iterator[i] > 0 {
+                iterator[i] = 0;
+                for j in (0..i).rev() {
+                    if iterator[j] < all_possible_coefs[j].len() - 1 {
+                        iterator[j] += 1;
+                        return true;
+                    } else {
+                        iterator[j] = 0;
+                    }
+                }
+            }
+        }
+        false
+    }
     /* naive exponential impl of  get_intersection_with_safe_ideal*/
     fn safe_post(
         ideal: &Ideal,
