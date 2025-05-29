@@ -73,7 +73,7 @@ pub struct Args {
         long,
         value_enum,
         default_value = "strategy",
-        help = "Solver output specification."
+        help = "Solver output specification. Strategy will always compute the maximal winning strategy. Yes-no may be faster when the answer is positive, it uses a heuristic trying to find a simple strategy, which is winning but might not be maximal."
     )]
     pub solver_output: solver::SolverOutput,
 }
