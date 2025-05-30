@@ -36,7 +36,7 @@ type CoefsCollection = Vec<Vec<Coef>>;
 /**
  * every vector comes in order omega / 0 / c+1 / 2 / 1
  */
-fn expand_finite_downward_closure(
+fn compute_possible_coefs(
     maximal_finite_coef: &Vec<u8>,
     is_omega_sometimes_possible: &Vec<bool>,
     is_omega_always_possible: &Vec<bool>,
@@ -57,7 +57,10 @@ fn expand_finite_downward_closure(
             let is_omega_always = is_omega_always_possible[i];
             match (is_omega_always, is_omega_sometimes, coef) {
                 (true, _, _) => vec![OMEGA],
-                (false, true, _) => vec![C0, OMEGA],
+                (false, true, c) => std::iter::once(C0)
+                    .chain(std::iter::once(OMEGA))
+                    .chain((1..c + 1).map(Coef::Value).rev())
+                    .collect(),
                 (false, false, c) => std::iter::once(C0)
                     .chain((1..c + 1).map(Coef::Value).rev())
                     .collect(),
@@ -293,7 +296,7 @@ impl DownSet {
         );
         trace!("is_omega_always_possible: {:?}\n", is_omega_always_possible);
 
-        let all_possible_coefs: CoefsCollection = expand_finite_downward_closure(
+        let all_possible_coefs: CoefsCollection = compute_possible_coefs(
             &max_finite_coords_pre,
             &is_omega_sometimes_possible,
             &is_omega_always_possible,
@@ -963,8 +966,8 @@ mod test {
 
     #[test]
     fn expand_finite_downward_closure() {
-        use crate::downset::expand_finite_downward_closure;
-        let expanded = expand_finite_downward_closure(
+        use crate::downset::compute_possible_coefs;
+        let expanded = compute_possible_coefs(
             &vec![0, 3, 1, 0],
             &vec![true, false, false, true],
             &vec![true, false, false, false],
